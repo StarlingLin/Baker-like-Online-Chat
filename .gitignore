@@ -18,3 +18,7 @@ pnpm-debug.log*
 
 # 本地编辑器
 .vscode/
+
+# 临时文件
+.eslintcache
+*.timestamp-*-*.mjs
