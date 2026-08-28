@@ -1,0 +1,20 @@
+# 依赖
+node_modules/
+
+# 构建和测试的输出
+dist/
+coverage/
+*.tsbuildinfo
+
+# 日志
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 本地环境和密码
+.env
+.env.*
+!.env.example
+
+# 本地编辑器
+.vscode/
