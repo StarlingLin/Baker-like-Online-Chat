@@ -1,0 +1,16 @@
+:root {
+  color-scheme: dark;
+
+  --baker-color-background: #141413;
+  --baker-color-surface: #3e3f3d;
+  --baker-color-surface-deep: #292827;
+  --baker-color-panel: #3c3b39;
+
+  --baker-color-text-primary: #ffffff;
+  --baker-color-text-muted: #b8b6b4;
+  --baker-color-accent: #ffef00;
+  --baker-color-frame: #cac9c9;
+  --baker-color-frame-subtle: rgb(202 201 201 / 0.24);
+
+  --baker-font-sans: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+}

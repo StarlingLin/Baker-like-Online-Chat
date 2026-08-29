@@ -12,24 +12,26 @@
 
 ## 固定上游版本
 
-| 代号 | 仓库 | 提交 |
-|---|---|---|
-| `chat` | `NCreeper233/endfield-baker-chat` | `2018b8728299831cf06052deea675018dec38145` |
-| `dx` | `Wanye-7300/baker-dx` | `7b52ad1006852f6dd00e27314bb29258bc418348` |
+| 代号    | 仓库                               | 提交                                       |
+| ------- | ---------------------------------- | ------------------------------------------ |
+| `chat`  | `NCreeper233/endfield-baker-chat`  | `2018b8728299831cf06052deea675018dec38145` |
+| `dx`    | `Wanye-7300/baker-dx`              | `7b52ad1006852f6dd00e27314bb29258bc418348` |
 | `maker` | `NCreeper233/endfield-baker-maker` | `447593925b3d9c5a25407873e12c96f6ea4638f7` |
 
 ## 当前文件映射
 
-| 项目内文件 | 来源 | 上游原始路径 |
-|---|---|---|
-| `background/app-background.webp` | `chat` | `src/assets/materials/bg_app.webp` |
-| `decoration/header-mark.webp` | `chat` | `src/assets/materials/achievement_main_deco05.webp` |
-| `decoration/session-card-texture.webp` | `chat` | `src/assets/materials/deco_sns_hudentry_bg.webp` |
-| `decoration/avatar-frame.webp` | `chat` | `src/assets/materials/bg_snscharentry_head_Line.webp` |
-| `decoration/session-card-detail.webp` | `chat` | `src/assets/materials/deco_sns_list_decorate.webp` |
-| `navigation/group-chat.png` | `dx` | `assets/extracted/icon/sns_icon_chat.png` |
-| `navigation/friends.png` | `dx` | `assets/extracted/icon/sns_icon_friend.png` |
-| `avatars/group-channel.webp` | `maker` | `src/assets/materials/icon_sns_npc_channel_a.webp` |
-| `avatars/endministrator.webp` | `chat` | `src/assets/avatars/管理员_女.webp` |
-| `avatars/luoxi.webp` | `chat` | `src/assets/avatars/洛茜.webp` |
-| `avatars/test-employee.webp` | `chat` | `src/assets/materials/icon_sns_npc_single_a.webp` |
+| 项目内文件                               | 来源    | 上游原始路径                                           |
+| ---------------------------------------- | ------- | ------------------------------------------------------ |
+| `background/app-background.webp`         | `chat`  | `src/assets/materials/bg_app.webp`                     |
+| `decoration/header-mark.webp`            | `chat`  | `src/assets/materials/achievement_main_deco05.webp`    |
+| `decoration/session-card-frame.webp`     | `chat`  | `src/assets/materials/deco_sns_hudentry_bg.webp`       |
+| `decoration/session-card-faint.webp`     | `chat`  | `src/assets/materials/deco_sns_tweet_decorate_02.webp` |
+| `decoration/session-card-underline.webp` | `chat`  | `src/assets/materials/deco_sns_tweet_decorate.webp`    |
+| `decoration/session-card-detail.webp`    | `chat`  | `src/assets/materials/deco_sns_list_decorate.webp`     |
+| `decoration/chat-avatar-frame.webp`      | `chat`  | `src/assets/materials/bg_snscharentry_head_Line.webp`  |
+| `navigation/group-chat.png`              | `dx`    | `assets/extracted/icon/sns_icon_chat.png`              |
+| `navigation/friends.png`                 | `dx`    | `assets/extracted/icon/sns_icon_friend.png`            |
+| `avatars/group-channel.webp`             | `maker` | `src/assets/materials/icon_sns_npc_channel_a.webp`     |
+| `avatars/endministrator.webp`            | `chat`  | `src/assets/avatars/管理员_女.webp`                    |
+| `avatars/luoxi.webp`                     | `chat`  | `src/assets/avatars/洛茜.webp`                         |
+| `avatars/test-employee.webp`             | `chat`  | `src/assets/materials/icon_sns_npc_single_a.webp`      |
