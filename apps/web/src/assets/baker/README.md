@@ -1,37 +1,45 @@
-# Baker 素材来源
+# Baker 素材说明
 
 本目录保存 Baker 风格界面实际使用的美术素材。
 
-## 使用边界
+## 来源与使用边界
 
-- 三个参考仓库的源码采用 MIT License，但游戏美术资源不因此自动变为 MIT 素材。
-- 上游说明中，角色头像来自森空岛《明日方舟：终末地》WIKI，其他 Baker UI 资源来自游戏内，相关权利归原权利方所有。
+- 素材统一整理自《明日方舟：终末地》游戏内资源和森空岛《明日方舟：终末地》相关资料。
+- 相关角色、美术和标识的权利归原权利方所有。
 - 本项目当前作为非商业玩家二创与学习项目使用这些素材。
-- 以后新增、替换或重命名素材时，应同步更新本文件。
-- 当前没有复制上游项目的 Vue、Rust 或 CSS 实现。
+- 新增或重命名素材时，应同步更新本文件中的目录职责或显示名映射。
 
-## 固定上游版本
+## 目录职责
 
-| 代号    | 仓库                               | 提交                                       |
-| ------- | ---------------------------------- | ------------------------------------------ |
-| `chat`  | `NCreeper233/endfield-baker-chat`  | `2018b8728299831cf06052deea675018dec38145` |
-| `dx`    | `Wanye-7300/baker-dx`              | `7b52ad1006852f6dd00e27314bb29258bc418348` |
-| `maker` | `NCreeper233/endfield-baker-maker` | `447593925b3d9c5a25407873e12c96f6ea4638f7` |
+| 目录             | 用途                                   |
+| ---------------- | -------------------------------------- |
+| `background/`    | 应用背景                               |
+| `navigation/`    | 左侧分类导航图标                       |
+| `decoration/`    | 标题、会话卡片、聊天窗口和消息气泡装饰 |
+| `avatars/`       | 群聊及演示账号头像                     |
+| `avatar-frames/` | 用户可选择的方形头像框                 |
 
-## 当前文件映射
+## 头像框显示名
 
-| 项目内文件                               | 来源    | 上游原始路径                                           |
-| ---------------------------------------- | ------- | ------------------------------------------------------ |
-| `background/app-background.webp`         | `chat`  | `src/assets/materials/bg_app.webp`                     |
-| `decoration/header-mark.webp`            | `chat`  | `src/assets/materials/achievement_main_deco05.webp`    |
-| `decoration/session-card-frame.webp`     | `chat`  | `src/assets/materials/deco_sns_hudentry_bg.webp`       |
-| `decoration/session-card-faint.webp`     | `chat`  | `src/assets/materials/deco_sns_tweet_decorate_02.webp` |
-| `decoration/session-card-underline.webp` | `chat`  | `src/assets/materials/deco_sns_tweet_decorate.webp`    |
-| `decoration/session-card-detail.webp`    | `chat`  | `src/assets/materials/deco_sns_list_decorate.webp`     |
-| `decoration/chat-avatar-frame.webp`      | `chat`  | `src/assets/materials/bg_snscharentry_head_Line.webp`  |
-| `navigation/group-chat.png`              | `dx`    | `assets/extracted/icon/sns_icon_chat.png`              |
-| `navigation/friends.png`                 | `dx`    | `assets/extracted/icon/sns_icon_friend.png`            |
-| `avatars/group-channel.webp`             | `maker` | `src/assets/materials/icon_sns_npc_channel_a.webp`     |
-| `avatars/endministrator.webp`            | `chat`  | `src/assets/avatars/管理员_女.webp`                    |
-| `avatars/luoxi.webp`                     | `chat`  | `src/assets/avatars/洛茜.webp`                         |
-| `avatars/test-employee.webp`             | `chat`  | `src/assets/materials/icon_sns_npc_single_a.webp`      |
+文件名是产品内部稳定标识，界面向用户显示中文名称。“启程”为默认头像框。
+
+| 项目内文件                                     | 中文显示名   | 默认 |
+| ---------------------------------------------- | ------------ | ---- |
+| `avatar-frames/blazing-festival.png`           | 炽燃盛会     |      |
+| `avatar-frames/waiting-wupaw.png`              | 等待乌啪     |      |
+| `avatar-frames/cheers.png`                     | 干杯         |      |
+| `avatar-frames/sword-and-script.png`           | 剑以衬文     |      |
+| `avatar-frames/subjugation.png`                | 降服         |      |
+| `avatar-frames/kali-ink-collection.png`        | 卡莉的墨绘集 |      |
+| `avatar-frames/kali-fairy-tale-collection.png` | 卡莉的童话集 |      |
+| `avatar-frames/fond-record.png`                | 美好记录     |      |
+| `avatar-frames/inscribed-star.png`             | 铭星         |      |
+| `avatar-frames/departure.png`                  | 启程         | 是   |
+| `avatar-frames/field-paths.png`                | 阡陌         |      |
+| `avatar-frames/forward-gaze.png`               | 前瞻目光     |      |
+| `avatar-frames/crisis-record.png`              | 危机刻录     |      |
+| `avatar-frames/cozy-harbor.png`                | 温馨港湾     |      |
+| `avatar-frames/game-discoverer.png`            | 游戏发现者   |      |
+| `avatar-frames/unfurled-scroll.png`            | 展卷         |      |
+| `avatar-frames/endfield-industry-alpha.png`    | 终末地工业 α |      |
+| `avatar-frames/endfield-industry-beta.png`     | 终末地工业 β |      |

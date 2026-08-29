@@ -139,6 +139,21 @@ const props = defineProps<{
   border-radius: clamp(2px, 0.3vh, 4px);
 }
 
+.baker-navigation__item--active::after {
+  position: absolute;
+  z-index: 0;
+  top: calc(-1 * var(--active-block-overhang));
+  right: calc(-1 * var(--active-inline-overhang));
+  bottom: calc(-1 * var(--active-block-overhang));
+  left: 0;
+  border-radius: clamp(2px, 0.3vh, 4px);
+  background: url('../../assets/baker/navigation/active-contour-texture.png') no-repeat right
+    center / auto 100%;
+  content: '';
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .baker-navigation__item--active img {
   filter: brightness(0);
 }
