@@ -1,0 +1,24 @@
+{
+  "name": "@baker-chat/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "format": "prettier --write --experimental-cli src/ \"*.{ts,json}\" \".*.json\"",
+    "format:check": "prettier --check --experimental-cli src/ \"*.{ts,json}\" \".*.json\""
+  },
+  "dependencies": {
+    "fastify": "^5.12.1"
+  },
+  "devDependencies": {
+    "@tsconfig/node24": "^24.0.5",
+    "@types/node": "^24.13.3",
+    "prettier": "3.9.5",
+    "tsx": "^4.23.13",
+    "typescript": "~6.0.3"
+  }
+}
