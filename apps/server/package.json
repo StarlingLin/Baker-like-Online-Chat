@@ -12,11 +12,16 @@
     "format:check": "prettier --check --experimental-cli src/ \"*.{ts,json}\" \".*.json\""
   },
   "dependencies": {
-    "fastify": "^5.12.1"
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.12.1",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.5",
     "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.10",
     "prettier": "3.9.5",
     "tsx": "^4.23.13",
     "typescript": "~6.0.3"
