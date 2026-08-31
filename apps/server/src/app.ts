@@ -1,14 +1,18 @@
+import cookie from '@fastify/cookie'
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify'
 
+import type { AppEnvironment } from './config.js'
 import { createDatabaseClient } from './db/client.js'
 
 export type BuildAppOptions = {
+  appEnvironment: AppEnvironment
   databaseUrl: string
   serverOptions?: FastifyServerOptions
 }
 
 export function buildApp(options: BuildAppOptions): FastifyInstance {
   const app = Fastify(options.serverOptions)
+  app.register(cookie)
 
   const database = createDatabaseClient({
     databaseUrl: options.databaseUrl,

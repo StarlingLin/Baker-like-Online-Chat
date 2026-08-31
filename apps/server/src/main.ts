@@ -7,6 +7,7 @@ const port = 3000
 const config = loadConfig()
 
 const app = buildApp({
+  appEnvironment: config.appEnvironment,
   databaseUrl: config.databaseUrl,
   serverOptions: {
     logger: true,

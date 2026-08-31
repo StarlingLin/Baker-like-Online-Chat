@@ -2,11 +2,33 @@ import { config as loadEnvironmentFile } from 'dotenv'
 
 loadEnvironmentFile({ quiet: true })
 
+export type AppEnvironment = 'development' | 'test' | 'production'
+
 export type AppConfig = {
+  appEnvironment: AppEnvironment
   databaseUrl: string
 }
 
+function parseAppEnvironment(value: string | undefined): AppEnvironment {
+  const normalizedValue = value?.trim()
+
+  if (!normalizedValue) {
+    throw new Error('找不到 APP_ENV')
+  }
+
+  switch (normalizedValue) {
+    case 'development':
+    case 'test':
+    case 'production':
+      return normalizedValue
+
+    default:
+      throw new Error('APP_ENV 只允许 development、test 或 production')
+  }
+}
+
 export function loadConfig(): AppConfig {
+  const appEnvironment = parseAppEnvironment(process.env.APP_ENV)
   const databaseUrl = process.env.DATABASE_URL?.trim()
 
   if (!databaseUrl) {
@@ -25,5 +47,8 @@ export function loadConfig(): AppConfig {
     throw new Error('DATABASE_URL 需要使用 postgres 或 postgresql')
   }
 
-  return { databaseUrl }
+  return {
+    appEnvironment,
+    databaseUrl,
+  }
 }

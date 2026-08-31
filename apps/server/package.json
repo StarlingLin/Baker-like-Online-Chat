@@ -16,6 +16,7 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.12.1",
