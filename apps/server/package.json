@@ -12,7 +12,8 @@
     "format:check": "prettier --check --experimental-cli src/ \"*.{ts,json}\" \".*.json\"",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
