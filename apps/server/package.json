@@ -9,7 +9,10 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "format": "prettier --write --experimental-cli src/ \"*.{ts,json}\" \".*.json\"",
-    "format:check": "prettier --check --experimental-cli src/ \"*.{ts,json}\" \".*.json\""
+    "format:check": "prettier --check --experimental-cli src/ \"*.{ts,json}\" \".*.json\"",
+    "db:generate": "drizzle-kit generate",
+    "db:check": "drizzle-kit check",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

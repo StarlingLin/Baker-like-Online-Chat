@@ -1,0 +1,105 @@
+{
+  "id": "46ebd7dd-274a-4d57-a7fe-841aeb40203e",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "uid": {
+          "name": "uid",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "users_uid_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "99999999",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "discriminator": {
+          "name": "discriminator",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_nickname_discriminator_unique": {
+          "name": "users_nickname_discriminator_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nickname",
+            "discriminator"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "users_uid_range_check": {
+          "name": "users_uid_range_check",
+          "value": "\"users\".\"uid\" BETWEEN 0 AND 99999999"
+        },
+        "users_discriminator_range_check": {
+          "name": "users_discriminator_range_check",
+          "value": "\"users\".\"discriminator\" BETWEEN 0 AND 9999"
+        },
+        "users_role_check": {
+          "name": "users_role_check",
+          "value": "\"users\".\"role\" IN ('user', 'admin')"
+        },
+        "users_nickname_not_blank_check": {
+          "name": "users_nickname_not_blank_check",
+          "value": "char_length(btrim(\"users\".\"nickname\")) > 0"
+        },
+        "users_reserved_zero_identity_check": {
+          "name": "users_reserved_zero_identity_check",
+          "value": "(\n        (\n          \"users\".\"uid\" = 0\n          AND \"users\".\"discriminator\" = 0\n          AND \"users\".\"role\" = 'admin'\n        )\n        OR\n        (\n          \"users\".\"uid\" > 0\n          AND \"users\".\"discriminator\" > 0\n        )\n      )"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

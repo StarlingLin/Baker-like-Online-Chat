@@ -1,0 +1,311 @@
+{
+  "id": "9bc21f16-e262-4c5c-b3b4-583d02de4031",
+  "prevId": "3f5f1c83-1ddf-434f-8bc0-53ca01cbdf8e",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.conversation_members": {
+      "name": "conversation_members",
+      "schema": "",
+      "columns": {
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_uid": {
+          "name": "user_uid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "conversation_members_user_uid_idx": {
+          "name": "conversation_members_user_uid_idx",
+          "columns": [
+            {
+              "expression": "user_uid",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "conversation_members_one_owner_idx": {
+          "name": "conversation_members_one_owner_idx",
+          "columns": [
+            {
+              "expression": "conversation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"conversation_members\".\"role\" = 'owner'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "conversation_members_conversation_id_conversations_id_fk": {
+          "name": "conversation_members_conversation_id_conversations_id_fk",
+          "tableFrom": "conversation_members",
+          "tableTo": "conversations",
+          "columnsFrom": [
+            "conversation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "restrict"
+        },
+        "conversation_members_user_uid_users_uid_fk": {
+          "name": "conversation_members_user_uid_users_uid_fk",
+          "tableFrom": "conversation_members",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_uid"
+          ],
+          "columnsTo": [
+            "uid"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {
+        "conversation_members_pkey": {
+          "name": "conversation_members_pkey",
+          "columns": [
+            "conversation_id",
+            "user_uid"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "conversation_members_role_check": {
+          "name": "conversation_members_role_check",
+          "value": "\"conversation_members\".\"role\" IN ('owner', 'admin', 'member')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.conversations": {
+      "name": "conversations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "conversations_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "system_key": {
+          "name": "system_key",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_uid": {
+          "name": "created_by_uid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "conversations_created_by_uid_users_uid_fk": {
+          "name": "conversations_created_by_uid_users_uid_fk",
+          "tableFrom": "conversations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_uid"
+          ],
+          "columnsTo": [
+            "uid"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "conversations_system_key_unique": {
+          "name": "conversations_system_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "system_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "conversations_kind_check": {
+          "name": "conversations_kind_check",
+          "value": "\"conversations\".\"kind\" IN ('group', 'direct')"
+        },
+        "conversations_system_key_check": {
+          "name": "conversations_system_key_check",
+          "value": "(\n        \"conversations\".\"system_key\" IS NULL\n        OR (\n          \"conversations\".\"kind\" = 'group'\n          AND char_length(btrim(\"conversations\".\"system_key\")) > 0\n        )\n      )"
+        },
+        "conversations_name_check": {
+          "name": "conversations_name_check",
+          "value": "(\n        (\n          \"conversations\".\"kind\" = 'group'\n          AND \"conversations\".\"name\" IS NOT NULL\n          AND char_length(btrim(\"conversations\".\"name\")) > 0\n        )\n        OR (\n          \"conversations\".\"kind\" = 'direct'\n          AND \"conversations\".\"name\" IS NULL\n        )\n      )"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "uid": {
+          "name": "uid",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "users_uid_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "99999999",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "discriminator": {
+          "name": "discriminator",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_nickname_discriminator_unique": {
+          "name": "users_nickname_discriminator_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nickname",
+            "discriminator"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "users_uid_range_check": {
+          "name": "users_uid_range_check",
+          "value": "\"users\".\"uid\" BETWEEN 0 AND 99999999"
+        },
+        "users_discriminator_range_check": {
+          "name": "users_discriminator_range_check",
+          "value": "\"users\".\"discriminator\" BETWEEN 0 AND 9999"
+        },
+        "users_role_check": {
+          "name": "users_role_check",
+          "value": "\"users\".\"role\" IN ('user', 'admin')"
+        },
+        "users_nickname_not_blank_check": {
+          "name": "users_nickname_not_blank_check",
+          "value": "char_length(btrim(\"users\".\"nickname\")) > 0"
+        },
+        "users_reserved_zero_identity_check": {
+          "name": "users_reserved_zero_identity_check",
+          "value": "(\n        (\n          \"users\".\"uid\" = 0\n          AND \"users\".\"discriminator\" = 0\n          AND \"users\".\"role\" = 'admin'\n        )\n        OR\n        (\n          \"users\".\"uid\" > 0\n          AND \"users\".\"discriminator\" > 0\n        )\n      )"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
