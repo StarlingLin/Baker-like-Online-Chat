@@ -29,6 +29,13 @@
       "when": 1788167392328,
       "tag": "0003_add_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788178550449,
+      "tag": "0004_add_sessions",
+      "breakpoints": true
     }
   ]
 }

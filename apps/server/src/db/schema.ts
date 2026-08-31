@@ -173,3 +173,24 @@ export const messages = pgTable(
     index('messages_conversation_id_id_idx').on(table.conversationId, table.id),
   ],
 )
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    tokenHash: varchar('token_hash', { length: 64 }).primaryKey(),
+    userUid: integer('user_uid')
+      .notNull()
+      .references(() => users.uid, {
+        onDelete: 'cascade',
+        onUpdate: 'restrict',
+      }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    check('sessions_token_hash_format_check', sql`${table.tokenHash} ~ '^[0-9a-f]{64}$'`),
+    check('sessions_expires_after_created_check', sql`${table.expiresAt} > ${table.createdAt}`),
+    index('sessions_user_uid_idx').on(table.userUid),
+    index('sessions_expires_at_idx').on(table.expiresAt),
+  ],
+)
