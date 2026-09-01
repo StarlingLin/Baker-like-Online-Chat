@@ -1,0 +1,28 @@
+{
+  "name": "@baker-chat/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "format": "prettier --write --experimental-cli src/ \"*.{ts,json}\" \".*.json\"",
+    "format:check": "prettier --check --experimental-cli src/ \"*.{ts,json}\" \".*.json\""
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "prettier": "3.9.5",
+    "typescript": "~6.0.3"
+  }
+}
