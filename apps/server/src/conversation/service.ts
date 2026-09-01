@@ -39,6 +39,58 @@ export type ListMessageHistoryOptions = {
   beforeMessageId?: number
 }
 
+export type SendMessageForUserOptions = {
+  conversationId: number
+  senderUid: number
+  clientMessageId: string
+  content: string
+}
+
+export type SendMessageForUserResult =
+  | {
+      status: 'created'
+      message: ConversationMessage
+    }
+  | {
+      status: 'duplicate'
+      message: ConversationMessage
+    }
+  | {
+      status: 'conversation_not_found'
+    }
+  | {
+      status: 'client_message_conflict'
+    }
+
+const storedMessageSelection = {
+  id: messages.id,
+  clientMessageId: messages.clientMessageId,
+  content: messages.content,
+  createdAt: messages.createdAt,
+}
+
+const messageSenderSelection = {
+  uid: users.uid,
+  nickname: users.nickname,
+  discriminator: users.discriminator,
+  role: users.role,
+}
+
+type StoredConversationMessage = Omit<ConversationMessage, 'sender'>
+
+function createConversationMessage(
+  message: StoredConversationMessage,
+  sender: MessageSender,
+): ConversationMessage {
+  return {
+    id: message.id,
+    clientMessageId: message.clientMessageId,
+    sender,
+    content: message.content,
+    createdAt: message.createdAt,
+  }
+}
+
 export function createConversationService(database: DatabaseClient['db']) {
   return {
     async listForUser(userUid: number): Promise<ConversationSummary[]> {
@@ -67,14 +119,8 @@ export function createConversationService(database: DatabaseClient['db']) {
 
       const messageRows = await database
         .select({
-          id: messages.id,
-          clientMessageId: messages.clientMessageId,
-          senderUid: users.uid,
-          senderNickname: users.nickname,
-          senderDiscriminator: users.discriminator,
-          senderRole: users.role,
-          content: messages.content,
-          createdAt: messages.createdAt,
+          message: storedMessageSelection,
+          sender: messageSenderSelection,
         })
         .from(messages)
         .innerJoin(
@@ -110,23 +156,95 @@ export function createConversationService(database: DatabaseClient['db']) {
 
       const hasMore = messageRows.length > MESSAGE_HISTORY_PAGE_SIZE
       const pageRows = messageRows.slice(0, MESSAGE_HISTORY_PAGE_SIZE)
-      const nextBefore = hasMore ? (pageRows.at(-1)?.id ?? null) : null
+      const nextBefore = hasMore ? (pageRows.at(-1)?.message.id ?? null) : null
 
       return {
-        messages: pageRows.reverse().map((row) => ({
-          id: row.id,
-          clientMessageId: row.clientMessageId,
-          sender: {
-            uid: row.senderUid,
-            nickname: row.senderNickname,
-            discriminator: row.senderDiscriminator,
-            role: row.senderRole,
-          },
-          content: row.content,
-          createdAt: row.createdAt,
-        })),
+        messages: pageRows
+          .reverse()
+          .map((row) => createConversationMessage(row.message, row.sender)),
         nextBefore,
       }
+    },
+
+    async sendMessageForUser(
+      options: SendMessageForUserOptions,
+    ): Promise<SendMessageForUserResult> {
+      return database.transaction(async (transaction): Promise<SendMessageForUserResult> => {
+        const [membership] = await transaction
+          .select({
+            sender: messageSenderSelection,
+          })
+          .from(conversationMembers)
+          .innerJoin(users, eq(users.uid, conversationMembers.userUid))
+          .where(
+            and(
+              eq(conversationMembers.conversationId, options.conversationId),
+              eq(conversationMembers.userUid, options.senderUid),
+            ),
+          )
+          .limit(1)
+          .for('key share', {
+            of: conversationMembers,
+          })
+
+        if (!membership) {
+          return {
+            status: 'conversation_not_found',
+          }
+        }
+
+        const [createdMessage] = await transaction
+          .insert(messages)
+          .values({
+            conversationId: options.conversationId,
+            senderUid: options.senderUid,
+            clientMessageId: options.clientMessageId,
+            content: options.content,
+          })
+          .onConflictDoNothing({
+            target: [messages.senderUid, messages.clientMessageId],
+          })
+          .returning(storedMessageSelection)
+
+        if (createdMessage) {
+          return {
+            status: 'created',
+            message: createConversationMessage(createdMessage, membership.sender),
+          }
+        }
+
+        const [existingMessageRow] = await transaction
+          .select({
+            conversationId: messages.conversationId,
+            message: storedMessageSelection,
+          })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.senderUid, options.senderUid),
+              eq(messages.clientMessageId, options.clientMessageId),
+            ),
+          )
+          .limit(1)
+
+        if (!existingMessageRow) {
+          throw new Error('消息唯一键冲突后找不到原消息')
+        }
+
+        if (
+          existingMessageRow.conversationId !== options.conversationId ||
+          existingMessageRow.message.content !== options.content
+        ) {
+          return {
+            status: 'client_message_conflict',
+          }
+        }
+
+        return {
+          status: 'duplicate',
+          message: createConversationMessage(existingMessageRow.message, membership.sender),
+        }
+      })
     },
   }
 }
