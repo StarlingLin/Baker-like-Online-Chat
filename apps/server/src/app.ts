@@ -2,7 +2,9 @@ import cookie from '@fastify/cookie'
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify'
 
 import type { AppEnvironment } from './config.js'
+import { createConversationService } from './conversation/service.js'
 import { createDatabaseClient } from './db/client.js'
+import { conversationRoutes } from './routes/conversation.js'
 import { developmentSessionRoutes } from './routes/development-session.js'
 import { sessionRoutes } from './routes/session.js'
 import { createSessionService } from './session/service.js'
@@ -33,6 +35,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   })
 
   const sessionService = createSessionService(database.db)
+  const conversationService = createConversationService(database.db)
 
   app.addHook('onClose', async () => {
     await database.close()
@@ -41,6 +44,12 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.register(sessionRoutes, {
     appEnvironment: options.appEnvironment,
     sessionService,
+  })
+
+  app.register(conversationRoutes, {
+    appEnvironment: options.appEnvironment,
+    sessionService,
+    conversationService,
   })
 
   if (options.appEnvironment === 'development') {
