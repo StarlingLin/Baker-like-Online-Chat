@@ -38,6 +38,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   const sessionService = createSessionService(database.db)
   const conversationService = createConversationService(database.db)
   attachRealtimeServer(app, {
+    conversationService,
     sessionService,
   })
 
