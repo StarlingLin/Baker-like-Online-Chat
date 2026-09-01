@@ -10,6 +10,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@baker-chat/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@fastify/cookie':
         specifier: ^11.1.2
         version: 11.1.2
