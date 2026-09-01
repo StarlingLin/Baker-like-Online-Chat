@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import type { AppEnvironment } from './config.js'
 import { createDatabaseClient } from './db/client.js'
 import { developmentSessionRoutes } from './routes/development-session.js'
+import { sessionRoutes } from './routes/session.js'
 import { createSessionService } from './session/service.js'
 
 export type BuildAppOptions = {
@@ -35,6 +36,11 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   app.addHook('onClose', async () => {
     await database.close()
+  })
+
+  app.register(sessionRoutes, {
+    appEnvironment: options.appEnvironment,
+    sessionService,
   })
 
   if (options.appEnvironment === 'development') {
