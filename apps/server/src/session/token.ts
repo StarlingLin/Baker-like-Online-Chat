@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto'
 
 const SESSION_TOKEN_BYTES = 32 /* 256位 */
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000 /* 一周 */
+export const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60 /* 一周 */
+const SESSION_DURATION_MS = SESSION_DURATION_SECONDS * 1000
 
 export type NewSessionMaterial = {
   token: string

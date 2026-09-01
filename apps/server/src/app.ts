@@ -3,6 +3,8 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 
 import type { AppEnvironment } from './config.js'
 import { createDatabaseClient } from './db/client.js'
+import { developmentSessionRoutes } from './routes/development-session.js'
+import { createSessionService } from './session/service.js'
 
 export type BuildAppOptions = {
   appEnvironment: AppEnvironment
@@ -11,7 +13,15 @@ export type BuildAppOptions = {
 }
 
 export function buildApp(options: BuildAppOptions): FastifyInstance {
-  const app = Fastify(options.serverOptions)
+  const app = Fastify({
+    ...options.serverOptions,
+    ajv: {
+      customOptions: {
+        coerceTypes: false,
+        removeAdditional: false,
+      },
+    },
+  })
   app.register(cookie)
 
   const database = createDatabaseClient({
@@ -21,9 +31,18 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     },
   })
 
+  const sessionService = createSessionService(database.db)
+
   app.addHook('onClose', async () => {
     await database.close()
   })
+
+  if (options.appEnvironment === 'development') {
+    app.register(developmentSessionRoutes, {
+      database: database.db,
+      sessionService,
+    })
+  }
 
   app.get('/api/health', async () => {
     return { status: 'ok' }
