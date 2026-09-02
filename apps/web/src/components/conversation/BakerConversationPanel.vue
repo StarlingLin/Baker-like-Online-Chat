@@ -54,9 +54,28 @@ async function restorePrependScrollAnchor(
   updateScrollEdges()
 }
 
+function isMessageViewportAtBottom(): boolean {
+  updateScrollEdges()
+
+  return !canScrollDown.value
+}
+
+function scrollMessagesToBottom(): void {
+  const viewport = scrollViewport.value
+
+  if (viewport === null) {
+    return
+  }
+
+  viewport.scrollTop = viewport.scrollHeight
+  updateScrollEdges()
+}
+
 defineExpose({
   capturePrependScrollAnchor,
   restorePrependScrollAnchor,
+  isMessageViewportAtBottom,
+  scrollMessagesToBottom,
 })
 </script>
 

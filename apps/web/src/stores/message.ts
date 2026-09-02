@@ -30,15 +30,44 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof Error ? error.message : fallbackMessage
 }
 
+function mergeMessagesById(
+  currentMessages: MessageDto[],
+  incomingMessages: MessageDto[],
+): MessageDto[] {
+  const messagesById = new Map<number, MessageDto>()
+
+  for (const message of currentMessages) {
+    messagesById.set(message.id, message)
+  }
+
+  for (const message of incomingMessages) {
+    messagesById.set(message.id, message)
+  }
+
+  return [...messagesById.values()].sort(
+    (leftMessage, rightMessage) => leftMessage.id - rightMessage.id,
+  )
+}
+
 export const useMessageStore = defineStore('message', () => {
   let nextLoadId = 0
   const latestLoadIds = new Map<number, number>()
   const latestOlderLoadIds = new Map<number, number>()
+  const latestRefreshIds = new Map<number, number>()
 
   const histories = ref<Record<number, ConversationMessageHistory>>({})
 
   function getHistory(conversationId: number): ConversationMessageHistory {
     return histories.value[conversationId] ?? createIdleMessageHistory()
+  }
+
+  function mergeIncomingMessage(conversationId: number, message: MessageDto): void {
+    const currentHistory = getHistory(conversationId)
+
+    histories.value[conversationId] = {
+      ...currentHistory,
+      messages: mergeMessagesById(currentHistory.messages, [message]),
+    }
   }
 
   async function loadFirstPage(conversationId: number): Promise<void> {
@@ -64,8 +93,15 @@ export const useMessageStore = defineStore('message', () => {
         return
       }
 
+      const latestHistory = histories.value[conversationId]
+
+      if (latestHistory === undefined || latestHistory.status !== 'loading') {
+        latestLoadIds.delete(conversationId)
+        return
+      }
+
       histories.value[conversationId] = {
-        messages: historyPage.messages,
+        messages: mergeMessagesById(historyPage.messages, latestHistory.messages),
         status: 'ready',
         errorMessage: null,
         nextBefore: historyPage.nextBefore,
@@ -79,14 +115,69 @@ export const useMessageStore = defineStore('message', () => {
         return
       }
 
+      const latestHistory = histories.value[conversationId]
+
+      if (latestHistory === undefined || latestHistory.status !== 'loading') {
+        latestLoadIds.delete(conversationId)
+        return
+      }
+
       histories.value[conversationId] = {
-        ...currentHistory,
+        ...latestHistory,
         status: 'error',
         errorMessage: getErrorMessage(error, '加载历史消息失败'),
       }
 
       latestLoadIds.delete(conversationId)
     }
+  }
+
+  async function refreshLatestMessages(conversationId: number): Promise<void> {
+    const currentHistory = getHistory(conversationId)
+
+    if (currentHistory.status !== 'ready' || latestRefreshIds.has(conversationId)) {
+      return
+    }
+
+    const refreshId = ++nextLoadId
+
+    latestRefreshIds.set(conversationId, refreshId)
+
+    try {
+      const historyPage = await fetchMessageHistory(conversationId)
+
+      if (latestRefreshIds.get(conversationId) !== refreshId) {
+        return
+      }
+
+      const latestHistory = histories.value[conversationId]
+
+      if (latestHistory === undefined || latestHistory.status !== 'ready') {
+        latestRefreshIds.delete(conversationId)
+        return
+      }
+
+      histories.value[conversationId] = {
+        ...latestHistory,
+        messages: mergeMessagesById(latestHistory.messages, historyPage.messages),
+      }
+
+      latestRefreshIds.delete(conversationId)
+    } catch {
+      if (latestRefreshIds.get(conversationId) === refreshId) {
+        latestRefreshIds.delete(conversationId)
+      }
+    }
+  }
+
+  async function refreshReadyHistories(): Promise<void> {
+    const readyConversationIds = Object.entries(histories.value)
+      .filter(([, history]) => history.status === 'ready')
+      .map(([conversationId]) => Number(conversationId))
+
+    await Promise.all(
+      readyConversationIds.map((conversationId) => refreshLatestMessages(conversationId)),
+    )
   }
 
   async function loadOlderMessages(conversationId: number): Promise<void> {
@@ -170,13 +261,17 @@ export const useMessageStore = defineStore('message', () => {
   function reset(): void {
     latestLoadIds.clear()
     latestOlderLoadIds.clear()
+    latestRefreshIds.clear()
     histories.value = {}
   }
 
   return {
     histories,
     getHistory,
+    mergeIncomingMessage,
     loadFirstPage,
+    refreshLatestMessages,
+    refreshReadyHistories,
     loadOlderMessages,
     reset,
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import BakerSignOutButton from './components/auth/BakerSignOutButton.vue'
 import SessionStatusScreen from './components/auth/SessionStatusScreen.vue'
 import BakerConversationPanel from './components/conversation/BakerConversationPanel.vue'
@@ -11,11 +11,13 @@ import BakerNavigation from './components/navigation/BakerNavigation.vue'
 import BakerSessionList from './components/session/BakerSessionList.vue'
 import { useConversationStore } from './stores/conversation'
 import { useMessageStore } from './stores/message'
+import { useRealtimeStore } from './stores/realtime'
 import { useSessionStore } from './stores/session'
 import { formatUid } from './utils/user-display'
 
 const conversationStore = useConversationStore()
 const messageStore = useMessageStore()
+const realtimeStore = useRealtimeStore()
 const sessionStore = useSessionStore()
 const isDevelopment = import.meta.env.DEV
 const conversationPanel = ref<InstanceType<typeof BakerConversationPanel> | null>(null)
@@ -36,6 +38,16 @@ const selectedMessageHistory = computed(() => {
   }
 
   return messageStore.getHistory(conversationId)
+})
+
+const selectedLatestMessageId = computed(() => {
+  const messages = selectedMessageHistory.value?.messages
+
+  if (messages === undefined) {
+    return null
+  }
+
+  return messages[messages.length - 1]?.id ?? null
 })
 
 function restoreSession(): void {
@@ -89,10 +101,12 @@ watch(
   () => sessionStore.status,
   (status) => {
     if (status === 'authenticated') {
+      realtimeStore.connect()
       void conversationStore.load()
       return
     }
 
+    realtimeStore.disconnect()
     conversationStore.reset()
     messageStore.reset()
   },
@@ -110,6 +124,35 @@ watch(
     void messageStore.loadFirstPage(conversationId)
   },
   { immediate: true },
+)
+
+watch(
+  [() => conversationStore.selectedConversationId, selectedLatestMessageId],
+  async ([conversationId, latestMessageId], [previousConversationId]) => {
+    if (conversationId === null || latestMessageId === null) {
+      return
+    }
+
+    const panelBeforeUpdate = conversationPanel.value
+    const shouldFollow =
+      conversationId !== previousConversationId ||
+      panelBeforeUpdate?.isMessageViewportAtBottom() === true
+
+    if (!shouldFollow) {
+      return
+    }
+
+    await nextTick()
+
+    if (conversationStore.selectedConversationId !== conversationId) {
+      return
+    }
+
+    conversationPanel.value?.scrollMessagesToBottom()
+  },
+  {
+    flush: 'pre',
+  },
 )
 
 onMounted(restoreSession)
