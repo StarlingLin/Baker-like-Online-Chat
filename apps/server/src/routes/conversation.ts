@@ -1,3 +1,4 @@
+import type { ListConversationsResponse } from '@baker-chat/contracts'
 import type { FastifyPluginAsync } from 'fastify'
 
 import type { ConversationService } from '../conversation/service.js'
@@ -67,8 +68,14 @@ export const conversationRoutes: FastifyPluginAsync<ConversationRoutesOptions> =
     const conversations = await options.conversationService.listForUser(user.uid)
 
     return {
-      conversations,
-    }
+      conversations: conversations.map((conversation) => ({
+        id: conversation.id,
+        kind: conversation.kind,
+        name: conversation.name,
+        membershipRole: conversation.membershipRole,
+        createdAt: conversation.createdAt.toISOString(),
+      })),
+    } satisfies ListConversationsResponse
   })
 
   app.get<MessageHistoryRequest>(
