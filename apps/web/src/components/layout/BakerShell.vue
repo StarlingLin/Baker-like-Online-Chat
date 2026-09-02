@@ -69,8 +69,10 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: clamp(12px, 1.6vh, 20px);
-  min-height: 100vh;
-  min-height: 100dvh;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   padding: clamp(24px, 2.2vh, 28px) clamp(20px, 3vw, 64px) clamp(20px, 4vh, 52px) 0;
 }
 

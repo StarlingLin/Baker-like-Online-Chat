@@ -14,6 +14,10 @@ const props = withDefaults(
     selected: false,
   },
 )
+
+const emit = defineEmits<{
+  select: []
+}>()
 </script>
 
 <template>
@@ -22,6 +26,7 @@ const props = withDefaults(
     :class="{ 'baker-session-card--selected': props.selected }"
     type="button"
     :aria-current="props.selected ? 'true' : undefined"
+    @click="emit('select')"
   >
     <img class="baker-session-card__faint" :src="cardFaint" alt="" />
     <img class="baker-session-card__frame" :src="cardFrame" alt="" />
@@ -59,7 +64,7 @@ const props = withDefaults(
   color: var(--baker-color-text-primary);
   font: inherit;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
 }
 
 .baker-session-card__frame,

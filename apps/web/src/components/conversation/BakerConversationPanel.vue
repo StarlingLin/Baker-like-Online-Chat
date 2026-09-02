@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useScrollEdges } from '@/composables/use-scroll-edges'
 import inputTopDecoration from '../../assets/baker/decoration/conversation-input-top.webp'
 import groupHeaderCenter from '../../assets/baker/decoration/group-header-center.webp'
 import groupHeaderLeft from '../../assets/baker/decoration/group-header-left.webp'
@@ -8,6 +9,9 @@ import groupHeaderRight from '../../assets/baker/decoration/group-header-right.w
 const props = defineProps<{
   title: string
 }>()
+
+const { scrollViewport, scrollContent, canScrollUp, canScrollDown, updateScrollEdges } =
+  useScrollEdges()
 </script>
 
 <template>
@@ -73,8 +77,31 @@ const props = defineProps<{
         </span>
       </div>
       <!-- 消息区 -->
-      <div class="baker-conversation-panel__messages">
-        <slot />
+      <div
+        class="baker-conversation-panel__messages-viewport"
+        :class="{
+          'baker-conversation-panel__messages-viewport--can-scroll-up': canScrollUp,
+          'baker-conversation-panel__messages-viewport--can-scroll-down': canScrollDown,
+        }"
+      >
+        <div
+          ref="scrollViewport"
+          class="baker-conversation-panel__messages"
+          @scroll.passive="updateScrollEdges"
+        >
+          <div ref="scrollContent" class="baker-conversation-panel__messages-content">
+            <slot />
+          </div>
+        </div>
+
+        <span
+          class="baker-conversation-panel__message-edge baker-conversation-panel__message-edge--top"
+          aria-hidden="true"
+        ></span>
+        <span
+          class="baker-conversation-panel__message-edge baker-conversation-panel__message-edge--bottom"
+          aria-hidden="true"
+        ></span>
       </div>
       <!-- 输入区 -->
       <footer class="baker-conversation-panel__composer">
@@ -145,13 +172,6 @@ const props = defineProps<{
 
 /* 滚动字遮罩 */
 .baker-conversation-panel__header-marquee-viewport {
-  /*
-   * 左段：25×66
-   * 左段灰色窄缝：x = 11–12
-   * 右段：440×66
-   * 右段灰色窄缝：x = 25–39
-   * 右段灰色端帽：x = 347–439
-   */
   --mask-left-width: clamp(20.45px, 2.58vh, 29.55px);
   --mask-left-gray-start: clamp(9px, 1.13vh, 13px);
   --mask-left-gray-end: clamp(10.64px, 1.34vh, 15.36px);
@@ -330,14 +350,124 @@ const props = defineProps<{
   clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
 
-.baker-conversation-panel__messages {
-  display: flex;
+.baker-conversation-panel__messages-viewport {
+  --message-edge-fade-height: clamp(6px, 0.8vh, 10px);
+  --message-viewport-inset: clamp(10px, 1.2vh, 18px);
+  position: relative;
   min-height: 0;
-  flex-direction: column;
-  gap: clamp(14px, 1.9vh, 22px); /* 消息间距离 */
+  margin-block: var(--message-viewport-inset);
   overflow: hidden;
-  padding: clamp(18px, 2.7vh, 28px) clamp(16px, 2.4vh, 26px);
   background: linear-gradient(90deg, rgb(255 255 255 / 0.015), transparent 32%, rgb(0 0 0 / 0.08));
+}
+
+.baker-conversation-panel__messages {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.baker-conversation-panel__messages::-webkit-scrollbar {
+  display: none;
+}
+
+.baker-conversation-panel__messages-viewport--can-scroll-up .baker-conversation-panel__messages {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--message-edge-fade-height),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--message-edge-fade-height),
+    #000 100%
+  );
+}
+
+.baker-conversation-panel__messages-viewport--can-scroll-down .baker-conversation-panel__messages {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--message-edge-fade-height)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--message-edge-fade-height)),
+    transparent 100%
+  );
+}
+
+.baker-conversation-panel__messages-viewport--can-scroll-up.baker-conversation-panel__messages-viewport--can-scroll-down
+  .baker-conversation-panel__messages {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--message-edge-fade-height),
+    #000 calc(100% - var(--message-edge-fade-height)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--message-edge-fade-height),
+    #000 calc(100% - var(--message-edge-fade-height)),
+    transparent 100%
+  );
+}
+
+.baker-conversation-panel__messages-content {
+  display: flex;
+  box-sizing: border-box;
+  min-height: 100%;
+  flex-direction: column;
+  gap: clamp(14px, 1.9vh, 22px);
+  padding: clamp(18px, 2.7vh, 28px) clamp(16px, 2.4vh, 26px);
+}
+
+.baker-conversation-panel__message-edge {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  left: 0;
+  height: var(--message-edge-fade-height);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  -webkit-backdrop-filter: blur(clamp(1px, 0.16vh, 2px));
+  backdrop-filter: blur(clamp(1px, 0.16vh, 2px));
+}
+
+.baker-conversation-panel__message-edge--top {
+  top: 0;
+  background: linear-gradient(to bottom, rgb(20 20 19 / 0.26), transparent);
+
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+  mask-image: linear-gradient(to bottom, #000, transparent);
+}
+
+.baker-conversation-panel__message-edge--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, rgb(20 20 19 / 0.26), transparent);
+
+  -webkit-mask-image: linear-gradient(to top, #000, transparent);
+  mask-image: linear-gradient(to top, #000, transparent);
+}
+
+.baker-conversation-panel__messages-viewport--can-scroll-up
+  .baker-conversation-panel__message-edge--top {
+  opacity: 1;
+}
+
+.baker-conversation-panel__messages-viewport--can-scroll-down
+  .baker-conversation-panel__message-edge--bottom {
+  opacity: 1;
 }
 
 /* 输入区 */
@@ -412,6 +542,9 @@ const props = defineProps<{
 @media (prefers-reduced-motion: reduce) {
   .baker-conversation-panel__header-marquee-content {
     animation: none;
+  }
+  .baker-conversation-panel__message-edge {
+    transition: none;
   }
 }
 </style>
