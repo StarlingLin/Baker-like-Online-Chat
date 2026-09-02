@@ -5,6 +5,7 @@ import endministratorAvatar from './assets/baker/avatars/endministrator.png'
 import groupChannelAvatar from './assets/baker/avatars/group-channel.webp'
 import luoxiAvatar from './assets/baker/avatars/luoxi.png'
 import testEmployeeAvatar from './assets/baker/avatars/test-employee.png'
+import SessionStatusScreen from './components/auth/SessionStatusScreen.vue'
 import BakerConversationPanel from './components/conversation/BakerConversationPanel.vue'
 import BakerMessageItem from './components/conversation/BakerMessageItem.vue'
 import DevelopmentIdentitySelector from './components/development/DevelopmentIdentitySelector.vue'
@@ -26,9 +27,10 @@ const navigationUid = computed(() => {
   return formatUid(sessionStore.user.uid)
 })
 
-onMounted(() => {
+function restoreSession(): void {
   void sessionStore.restore()
-})
+}
+onMounted(restoreSession)
 </script>
 
 <template>
@@ -40,7 +42,24 @@ onMounted(() => {
     "
   />
 
-  <BakerShell>
+  <SessionStatusScreen
+    v-else-if="sessionStore.status === 'idle' || sessionStore.status === 'loading'"
+    mode="loading"
+  />
+
+  <SessionStatusScreen
+    v-else-if="sessionStore.status === 'error'"
+    mode="error"
+    :message="sessionStore.errorMessage"
+    @retry="restoreSession"
+  />
+
+  <SessionStatusScreen
+    v-else-if="sessionStore.status === 'unauthenticated'"
+    mode="unauthenticated"
+  />
+
+  <BakerShell v-else>
     <template #header>
       <BakerHeader title="群聊消息" />
     </template>
