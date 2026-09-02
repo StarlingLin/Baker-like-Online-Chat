@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import type { PublicUserDto } from './user.js'
+
 export const CONVERSATION_ID_MAX_VALUE = 21_4748_3647
 export const MESSAGE_CONTENT_MAX_LENGTH = 2000
 export const SEND_MESSAGE_EVENT = 'message:send' /* 客户端 */
@@ -28,12 +30,7 @@ export const sendMessagePayloadSchema = z.strictObject({
 export type SendMessagePayload = z.infer<typeof sendMessagePayloadSchema>
 
 // 数据传输对象
-export type MessageSenderDto = {
-  uid: number
-  nickname: string
-  discriminator: number
-  role: 'user' | 'admin'
-}
+export type MessageSenderDto = PublicUserDto
 
 export type MessageDto = {
   id: number

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import departureAvatarFrame from './assets/baker/avatar-frames/departure.png'
 import endministratorAvatar from './assets/baker/avatars/endministrator.png'
 import groupChannelAvatar from './assets/baker/avatars/group-channel.webp'
@@ -6,20 +7,46 @@ import luoxiAvatar from './assets/baker/avatars/luoxi.png'
 import testEmployeeAvatar from './assets/baker/avatars/test-employee.png'
 import BakerConversationPanel from './components/conversation/BakerConversationPanel.vue'
 import BakerMessageItem from './components/conversation/BakerMessageItem.vue'
+import DevelopmentIdentitySelector from './components/development/DevelopmentIdentitySelector.vue'
 import BakerHeader from './components/layout/BakerHeader.vue'
 import BakerShell from './components/layout/BakerShell.vue'
 import BakerNavigation from './components/navigation/BakerNavigation.vue'
 import BakerSessionCard from './components/session/BakerSessionCard.vue'
+import { useSessionStore } from './stores/session'
+import { formatUid } from './utils/user-display'
+
+const sessionStore = useSessionStore()
+const isDevelopment = import.meta.env.DEV
+
+const navigationUid = computed(() => {
+  if (sessionStore.user === null) {
+    return '?325799?'
+  }
+
+  return formatUid(sessionStore.user.uid)
+})
+
+onMounted(() => {
+  void sessionStore.restore()
+})
 </script>
 
 <template>
+  <!-- 开发测试 -->
+  <DevelopmentIdentitySelector
+    v-if="
+      isDevelopment &&
+      (sessionStore.status === 'unauthenticated' || sessionStore.developmentSignInStatus !== 'idle')
+    "
+  />
+
   <BakerShell>
     <template #header>
       <BakerHeader title="群聊消息" />
     </template>
 
     <template #navigation>
-      <BakerNavigation uid="00000001" />
+      <BakerNavigation :uid="navigationUid" />
     </template>
 
     <template #session-list>

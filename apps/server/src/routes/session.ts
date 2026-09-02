@@ -1,9 +1,10 @@
+import type { GetSessionResponse } from '@baker-chat/contracts'
 import type { FastifyPluginAsync } from 'fastify'
+
 import {
   authenticateSessionRequest,
   type SessionAuthenticationOptions,
 } from '../session/authenticate-request.js'
-
 import { createSessionCookieRemovalOptions, SESSION_COOKIE_NAME } from '../session/cookie.js'
 
 export type SessionRoutesOptions = SessionAuthenticationOptions
@@ -18,7 +19,7 @@ export const sessionRoutes: FastifyPluginAsync<SessionRoutesOptions> = async (ap
 
     return {
       user,
-    }
+    } satisfies GetSessionResponse
   })
 
   app.delete('/api/session', async (request, reply) => {

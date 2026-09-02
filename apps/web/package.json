@@ -19,6 +19,8 @@
     "format:check": "prettier --check --experimental-cli src/ \"*.{ts,json,html}\" \".*.json\""
   },
   "dependencies": {
+    "@baker-chat/contracts": "workspace:*",
+    "pinia": "^4.0.3",
     "vue": "^3.5.40"
   },
   "devDependencies": {

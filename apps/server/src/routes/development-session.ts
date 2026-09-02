@@ -1,3 +1,7 @@
+import type {
+  CreateDevelopmentSessionRequest,
+  ListDevelopmentUsersResponse,
+} from '@baker-chat/contracts'
 import { asc, eq, inArray } from 'drizzle-orm'
 import type { FastifyPluginAsync } from 'fastify'
 
@@ -7,10 +11,6 @@ import { createSessionCookieOptions, SESSION_COOKIE_NAME } from '../session/cook
 import type { SessionService } from '../session/service.js'
 
 const DEVELOPMENT_USER_UIDS = [0, 1, 9999_9999]
-
-type DevelopmentSessionRequestBody = {
-  uid: number
-}
 
 const developmentSessionRequestSchema = {
   type: 'object',
@@ -47,10 +47,10 @@ export const developmentSessionRoutes: FastifyPluginAsync<DevelopmentSessionRout
 
     return {
       users: developmentUsers,
-    }
+    } satisfies ListDevelopmentUsersResponse
   })
 
-  app.post<{ Body: DevelopmentSessionRequestBody }>(
+  app.post<{ Body: CreateDevelopmentSessionRequest }>(
     '/api/dev/session',
     {
       schema: {
