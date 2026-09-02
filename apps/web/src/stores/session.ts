@@ -2,12 +2,18 @@ import type { PublicUserDto } from '@baker-chat/contracts'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import { createDevelopmentSession, fetchCurrentSession, fetchDevelopmentUsers } from '@/api/session'
+import {
+  createDevelopmentSession,
+  deleteCurrentSession,
+  fetchCurrentSession,
+  fetchDevelopmentUsers,
+} from '@/api/session'
 
 // 还没开始恢复 | 正在请求session | 已恢复身份 | 没有有效身份 | 故障机器人()
 export type SessionStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated' | 'error'
 export type DevelopmentUsersStatus = 'idle' | 'loading' | 'ready' | 'error'
 export type DevelopmentSignInStatus = 'idle' | 'loading' | 'error'
+export type SignOutStatus = 'idle' | 'loading' | 'error'
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof Error ? error.message : fallbackMessage
@@ -17,6 +23,9 @@ export const useSessionStore = defineStore('session', () => {
   const status = ref<SessionStatus>('idle')
   const user = ref<PublicUserDto | null>(null)
   const errorMessage = ref<string | null>(null)
+
+  const signOutStatus = ref<SignOutStatus>('idle')
+  const signOutErrorMessage = ref<string | null>(null)
 
   const developmentUsers = ref<PublicUserDto[]>([])
   const developmentUsersStatus = ref<DevelopmentUsersStatus>('idle')
@@ -41,6 +50,27 @@ export const useSessionStore = defineStore('session', () => {
     } catch (error) {
       errorMessage.value = getErrorMessage(error, '恢复当前 Session 时发生未知错误')
       status.value = 'error'
+    }
+  }
+
+  async function signOut(): Promise<void> {
+    if (status.value !== 'authenticated' || signOutStatus.value === 'loading') {
+      return
+    }
+
+    signOutStatus.value = 'loading'
+    signOutErrorMessage.value = null
+
+    try {
+      await deleteCurrentSession()
+
+      user.value = null
+      errorMessage.value = null
+      status.value = 'unauthenticated'
+      signOutStatus.value = 'idle'
+    } catch (error) {
+      signOutErrorMessage.value = getErrorMessage(error, '退出登录时发生未知错误')
+      signOutStatus.value = 'error'
     }
   }
 
@@ -102,12 +132,15 @@ export const useSessionStore = defineStore('session', () => {
     status,
     user,
     errorMessage,
+    signOutStatus,
+    signOutErrorMessage,
     developmentUsers,
     developmentUsersStatus,
     developmentUsersErrorMessage,
     developmentSignInStatus,
     developmentSignInErrorMessage,
     restore,
+    signOut,
     loadDevelopmentUsers,
     signInAsDevelopmentUser,
   }

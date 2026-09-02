@@ -23,6 +23,17 @@ export async function fetchCurrentSession(): Promise<PublicUserDto | null> {
   return responseBody.user
 }
 
+export async function deleteCurrentSession(): Promise<void> {
+  const response = await fetch('/api/session', {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  })
+
+  if (response.status !== 204) {
+    throw new Error(`删除当前 Session 失败：HTTP ${response.status}`)
+  }
+}
+
 export async function fetchDevelopmentUsers(): Promise<PublicUserDto[]> {
   const response = await fetch('/api/dev/users', {
     credentials: 'same-origin',

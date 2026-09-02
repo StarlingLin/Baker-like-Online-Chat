@@ -7,6 +7,9 @@
       <!-- 标题 -->
       <header class="baker-shell__header">
         <slot name="header" />
+        <div class="baker-shell__header-actions">
+          <slot name="header-actions" />
+        </div>
       </header>
 
       <div class="baker-shell__workspace">
@@ -76,7 +79,19 @@
   display: flex;
   min-height: clamp(40px, 4.3vh, 52px);
   align-items: center;
+  gap: clamp(16px, 2vh, 24px);
   padding-left: clamp(80px, 11.5vh, 136px);
+}
+
+.baker-shell__header-actions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 /* 工作区三栏 */

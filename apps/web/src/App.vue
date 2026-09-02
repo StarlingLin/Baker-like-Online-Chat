@@ -5,6 +5,7 @@ import endministratorAvatar from './assets/baker/avatars/endministrator.png'
 import groupChannelAvatar from './assets/baker/avatars/group-channel.webp'
 import luoxiAvatar from './assets/baker/avatars/luoxi.png'
 import testEmployeeAvatar from './assets/baker/avatars/test-employee.png'
+import BakerSignOutButton from './components/auth/BakerSignOutButton.vue'
 import SessionStatusScreen from './components/auth/SessionStatusScreen.vue'
 import BakerConversationPanel from './components/conversation/BakerConversationPanel.vue'
 import BakerMessageItem from './components/conversation/BakerMessageItem.vue'
@@ -30,6 +31,11 @@ const navigationUid = computed(() => {
 function restoreSession(): void {
   void sessionStore.restore()
 }
+
+function signOut(): void {
+  void sessionStore.signOut()
+}
+
 onMounted(restoreSession)
 </script>
 
@@ -62,6 +68,14 @@ onMounted(restoreSession)
   <BakerShell v-else>
     <template #header>
       <BakerHeader title="群聊消息" />
+    </template>
+
+    <template #header-actions>
+      <BakerSignOutButton
+        :loading="sessionStore.signOutStatus === 'loading'"
+        :error-message="sessionStore.signOutErrorMessage"
+        @sign-out="signOut"
+      />
     </template>
 
     <template #navigation>
