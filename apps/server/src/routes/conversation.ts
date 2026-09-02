@@ -1,5 +1,6 @@
-import type { ListConversationsResponse } from '@baker-chat/contracts'
+import type { ListConversationsResponse, ListMessageHistoryResponse } from '@baker-chat/contracts'
 import type { FastifyPluginAsync } from 'fastify'
+import { createMessageDto } from '../conversation/message-dto.js'
 
 import type { ConversationService } from '../conversation/service.js'
 import {
@@ -121,7 +122,10 @@ export const conversationRoutes: FastifyPluginAsync<ConversationRoutesOptions> =
         return reply.status(404).send(CONVERSATION_NOT_FOUND_RESPONSE)
       }
 
-      return historyPage
+      return {
+        messages: historyPage.messages.map(createMessageDto),
+        nextBefore: historyPage.nextBefore,
+      } satisfies ListMessageHistoryResponse
     },
   )
 }

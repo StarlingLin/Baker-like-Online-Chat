@@ -1,4 +1,8 @@
-import type { ConversationSummaryDto, ListConversationsResponse } from '@baker-chat/contracts'
+import type {
+  ConversationSummaryDto,
+  ListConversationsResponse,
+  ListMessageHistoryResponse,
+} from '@baker-chat/contracts'
 
 export async function fetchConversations(): Promise<ConversationSummaryDto[]> {
   const response = await fetch('/api/conversations', {
@@ -12,4 +16,21 @@ export async function fetchConversations(): Promise<ConversationSummaryDto[]> {
   const responseBody = (await response.json()) as ListConversationsResponse
 
   return responseBody.conversations
+}
+
+export async function fetchMessageHistory(
+  conversationId: number,
+  before?: number,
+): Promise<ListMessageHistoryResponse> {
+  const queryString = before === undefined ? '' : `?before=${before}`
+
+  const response = await fetch(`/api/conversations/${conversationId}/messages${queryString}`, {
+    credentials: 'same-origin',
+  })
+
+  if (!response.ok) {
+    throw new Error(`获取历史消息失败：HTTP ${response.status}`)
+  }
+
+  return (await response.json()) as ListMessageHistoryResponse
 }

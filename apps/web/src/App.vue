@@ -1,23 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import departureAvatarFrame from './assets/baker/avatar-frames/departure.png'
-import endministratorAvatar from './assets/baker/avatars/endministrator.png'
-import luoxiAvatar from './assets/baker/avatars/luoxi.png'
-import testEmployeeAvatar from './assets/baker/avatars/test-employee.png'
 import BakerSignOutButton from './components/auth/BakerSignOutButton.vue'
 import SessionStatusScreen from './components/auth/SessionStatusScreen.vue'
 import BakerConversationPanel from './components/conversation/BakerConversationPanel.vue'
-import BakerMessageItem from './components/conversation/BakerMessageItem.vue'
+import BakerMessageList from './components/conversation/BakerMessageList.vue'
 import DevelopmentIdentitySelector from './components/development/DevelopmentIdentitySelector.vue'
 import BakerHeader from './components/layout/BakerHeader.vue'
 import BakerShell from './components/layout/BakerShell.vue'
 import BakerNavigation from './components/navigation/BakerNavigation.vue'
 import BakerSessionList from './components/session/BakerSessionList.vue'
 import { useConversationStore } from './stores/conversation'
+import { useMessageStore } from './stores/message'
 import { useSessionStore } from './stores/session'
 import { formatUid } from './utils/user-display'
 
 const conversationStore = useConversationStore()
+const messageStore = useMessageStore()
 const sessionStore = useSessionStore()
 const isDevelopment = import.meta.env.DEV
 
@@ -29,12 +27,32 @@ const navigationUid = computed(() => {
   return formatUid(sessionStore.user.uid)
 })
 
+const selectedMessageHistory = computed(() => {
+  const conversationId = conversationStore.selectedConversationId
+
+  if (conversationId === null) {
+    return null
+  }
+
+  return messageStore.getHistory(conversationId)
+})
+
 function restoreSession(): void {
   void sessionStore.restore()
 }
 
 function signOut(): void {
   void sessionStore.signOut()
+}
+
+function retryMessageHistory(): void {
+  const conversationId = conversationStore.selectedConversationId
+
+  if (conversationId === null) {
+    return
+  }
+
+  void messageStore.loadFirstPage(conversationId)
 }
 
 watch(
@@ -46,6 +64,20 @@ watch(
     }
 
     conversationStore.reset()
+    messageStore.reset()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => conversationStore.selectedConversationId,
+  (conversationId) => {
+    if (conversationId === null) {
+      messageStore.reset()
+      return
+    }
+
+    void messageStore.loadFirstPage(conversationId)
   },
   { immediate: true },
 )
@@ -105,26 +137,13 @@ onMounted(restoreSession)
         v-if="conversationStore.selectedConversation !== null"
         :title="conversationStore.selectedConversation.name ?? '未知频段'"
       >
-        <BakerMessageItem
-          display-name="管理员 #0000"
-          text="欢迎来到帝江号公共频道。"
-          :avatar-src="endministratorAvatar"
-          :avatar-frame-src="departureAvatarFrame"
-          variant="other"
-        />
-        <BakerMessageItem
-          display-name="Starling #0001"
-          text="这里可以正常显示消息吗？"
-          :avatar-src="luoxiAvatar"
-          :avatar-frame-src="departureAvatarFrame"
-          variant="own"
-        />
-        <BakerMessageItem
-          display-name="测试员工 #0001"
-          text="收到，当前显示正常。"
-          :avatar-src="testEmployeeAvatar"
-          :avatar-frame-src="departureAvatarFrame"
-          variant="other"
+        <BakerMessageList
+          v-if="selectedMessageHistory !== null && sessionStore.user !== null"
+          :messages="selectedMessageHistory.messages"
+          :status="selectedMessageHistory.status"
+          :error-message="selectedMessageHistory.errorMessage"
+          :current-user-uid="sessionStore.user.uid"
+          @retry="retryMessageHistory"
         />
       </BakerConversationPanel>
     </template>

@@ -40,6 +40,11 @@ export type MessageDto = {
   createdAt: string
 }
 
+export type ListMessageHistoryResponse = {
+  messages: MessageDto[]
+  nextBefore: number | null
+}
+
 export const SEND_MESSAGE_ERROR_CODES = [
   'invalid_payload',
   'conversation_not_found',

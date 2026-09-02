@@ -3,13 +3,13 @@ import {
   SEND_MESSAGE_EVENT,
   sendMessagePayloadSchema,
   type ClientToServerEvents,
-  type MessageDto,
   type ServerToClientEvents,
 } from '@baker-chat/contracts'
 import type { FastifyInstance } from 'fastify'
 import { Server, type DefaultEventsMap } from 'socket.io'
 
-import type { ConversationMessage, ConversationService } from '../conversation/service.js'
+import { createMessageDto } from '../conversation/message-dto.js'
+import type { ConversationService } from '../conversation/service.js'
 import { SESSION_COOKIE_NAME } from '../session/cookie.js'
 import type { SessionService, SessionUser } from '../session/service.js'
 
@@ -32,16 +32,6 @@ export type AttachRealtimeServerOptions = {
 
 export function createConversationRoomName(conversationId: number): string {
   return `conversation:${conversationId}`
-}
-
-function createMessageDto(message: ConversationMessage): MessageDto {
-  return {
-    id: message.id,
-    clientMessageId: message.clientMessageId,
-    sender: message.sender,
-    content: message.content,
-    createdAt: message.createdAt.toISOString(),
-  }
 }
 
 export function attachRealtimeServer(
