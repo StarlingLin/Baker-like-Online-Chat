@@ -4,12 +4,15 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export type MessageHistoryStatus = 'idle' | 'loading' | 'ready' | 'error'
+export type OlderMessagesStatus = 'idle' | 'loading' | 'error'
 
 export type ConversationMessageHistory = {
   messages: MessageDto[]
   status: MessageHistoryStatus
   errorMessage: string | null
   nextBefore: number | null
+  olderMessagesStatus: OlderMessagesStatus
+  olderMessagesErrorMessage: string | null
 }
 
 function createIdleMessageHistory(): ConversationMessageHistory {
@@ -18,6 +21,8 @@ function createIdleMessageHistory(): ConversationMessageHistory {
     status: 'idle',
     errorMessage: null,
     nextBefore: null,
+    olderMessagesStatus: 'idle',
+    olderMessagesErrorMessage: null,
   }
 }
 
@@ -28,6 +33,7 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 export const useMessageStore = defineStore('message', () => {
   let nextLoadId = 0
   const latestLoadIds = new Map<number, number>()
+  const latestOlderLoadIds = new Map<number, number>()
 
   const histories = ref<Record<number, ConversationMessageHistory>>({})
 
@@ -63,6 +69,8 @@ export const useMessageStore = defineStore('message', () => {
         status: 'ready',
         errorMessage: null,
         nextBefore: historyPage.nextBefore,
+        olderMessagesStatus: 'idle',
+        olderMessagesErrorMessage: null,
       }
 
       latestLoadIds.delete(conversationId)
@@ -81,8 +89,87 @@ export const useMessageStore = defineStore('message', () => {
     }
   }
 
+  async function loadOlderMessages(conversationId: number): Promise<void> {
+    const currentHistory = getHistory(conversationId)
+
+    if (
+      currentHistory.status !== 'ready' ||
+      currentHistory.nextBefore === null ||
+      currentHistory.olderMessagesStatus === 'loading'
+    ) {
+      return
+    }
+
+    const beforeMessageId = currentHistory.nextBefore
+    const loadId = ++nextLoadId
+
+    latestOlderLoadIds.set(conversationId, loadId)
+
+    histories.value[conversationId] = {
+      ...currentHistory,
+      olderMessagesStatus: 'loading',
+      olderMessagesErrorMessage: null,
+    }
+
+    try {
+      const historyPage = await fetchMessageHistory(conversationId, beforeMessageId)
+
+      if (latestOlderLoadIds.get(conversationId) !== loadId) {
+        return
+      }
+
+      const latestHistory = histories.value[conversationId]
+
+      if (latestHistory === undefined || latestHistory.status !== 'ready') {
+        latestOlderLoadIds.delete(conversationId)
+        return
+      }
+
+      const existingMessageIds = new Set(latestHistory.messages.map((message) => message.id))
+
+      const uniqueOlderMessages = historyPage.messages.filter((message) => {
+        if (existingMessageIds.has(message.id)) {
+          return false
+        }
+
+        existingMessageIds.add(message.id)
+        return true
+      })
+
+      histories.value[conversationId] = {
+        ...latestHistory,
+        messages: [...uniqueOlderMessages, ...latestHistory.messages],
+        nextBefore: historyPage.nextBefore,
+        olderMessagesStatus: 'idle',
+        olderMessagesErrorMessage: null,
+      }
+
+      latestOlderLoadIds.delete(conversationId)
+    } catch (error) {
+      if (latestOlderLoadIds.get(conversationId) !== loadId) {
+        return
+      }
+
+      const latestHistory = histories.value[conversationId]
+
+      if (latestHistory === undefined || latestHistory.status !== 'ready') {
+        latestOlderLoadIds.delete(conversationId)
+        return
+      }
+
+      histories.value[conversationId] = {
+        ...latestHistory,
+        olderMessagesStatus: 'error',
+        olderMessagesErrorMessage: getErrorMessage(error, '加载更早消息失败'),
+      }
+
+      latestOlderLoadIds.delete(conversationId)
+    }
+  }
+
   function reset(): void {
     latestLoadIds.clear()
+    latestOlderLoadIds.clear()
     histories.value = {}
   }
 
@@ -90,6 +177,7 @@ export const useMessageStore = defineStore('message', () => {
     histories,
     getHistory,
     loadFirstPage,
+    loadOlderMessages,
     reset,
   }
 })

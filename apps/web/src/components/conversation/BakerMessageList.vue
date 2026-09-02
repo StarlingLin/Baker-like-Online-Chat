@@ -9,16 +9,21 @@ import BakerMessageItem from './BakerMessageItem.vue'
 
 type MessageListStatus = 'idle' | 'loading' | 'ready' | 'error'
 type MessageVariant = 'other' | 'own'
+type OlderMessagesStatus = 'idle' | 'loading' | 'error'
 
 const props = defineProps<{
   messages: MessageDto[]
   status: MessageListStatus
   errorMessage: string | null
   currentUserUid: number
+  nextBefore: number | null
+  olderMessagesStatus: OlderMessagesStatus
+  olderMessagesErrorMessage: string | null
 }>()
 
 const emit = defineEmits<{
   retry: []
+  loadOlder: []
 }>()
 
 const avatarSources = new Map<number, string>([
@@ -41,7 +46,11 @@ function getMessageVariant(senderUid: number): MessageVariant {
     class="baker-message-list"
     role="log"
     aria-label="消息列表"
-    :aria-busy="props.status === 'idle' || props.status === 'loading'"
+    :aria-busy="
+      props.status === 'idle' ||
+      props.status === 'loading' ||
+      props.olderMessagesStatus === 'loading'
+    "
   >
     <div
       v-if="props.status === 'idle' || props.status === 'loading'"
@@ -76,6 +85,31 @@ function getMessageVariant(senderUid: number): MessageVariant {
     </div>
 
     <template v-else>
+      <div v-if="props.nextBefore !== null" class="baker-message-list__older">
+        <p
+          v-if="props.olderMessagesStatus === 'error' && props.olderMessagesErrorMessage !== null"
+          class="baker-message-list__older-error"
+          role="alert"
+        >
+          {{ props.olderMessagesErrorMessage }}
+        </p>
+
+        <button
+          class="baker-message-list__older-button"
+          type="button"
+          :disabled="props.olderMessagesStatus === 'loading'"
+          @click="emit('loadOlder')"
+        >
+          {{
+            props.olderMessagesStatus === 'loading'
+              ? '正在加载更早消息'
+              : props.olderMessagesStatus === 'error'
+                ? '重新加载更早消息'
+                : '加载更早消息'
+          }}
+        </button>
+      </div>
+
       <BakerMessageItem
         v-for="message in props.messages"
         :key="message.id"
@@ -96,6 +130,78 @@ function getMessageVariant(senderUid: number): MessageVariant {
   flex: 1 0 auto;
   flex-direction: column;
   gap: clamp(14px, 1.9vh, 22px);
+}
+
+.baker-message-list__older {
+  display: flex;
+  min-height: clamp(34px, 4.3vh, 48px);
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(5px, 0.65vh, 8px);
+  padding: clamp(2px, 0.35vh, 4px) 0;
+}
+
+.baker-message-list__older-error {
+  max-width: min(100%, 480px);
+  margin: 0;
+  color: rgb(255 184 176 / 0.9);
+  font-size: clamp(11px, 1.25vh, 14px);
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.baker-message-list__older-button {
+  position: relative;
+  min-height: clamp(29px, 3.5vh, 38px);
+  padding: 0 clamp(20px, 2.7vh, 30px);
+  border: 1px solid rgb(255 255 255 / 0.32);
+  border-radius: clamp(2px, 0.25vh, 3px);
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.035),
+    rgb(255 255 255 / 0.1),
+    rgb(255 255 255 / 0.035)
+  );
+  color: var(--baker-color-text-muted);
+  font: inherit;
+  font-size: clamp(11px, 1.3vh, 15px);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.baker-message-list__older-button::before {
+  position: absolute;
+  top: 50%;
+  left: clamp(7px, 0.9vh, 10px);
+  width: clamp(3px, 0.35vh, 4px);
+  height: clamp(12px, 1.5vh, 17px);
+  background: var(--baker-color-accent);
+  content: '';
+  opacity: 0.78;
+  transform: translateY(-50%);
+}
+
+.baker-message-list__older-button:hover:not(:disabled) {
+  border-color: rgb(255 239 0 / 0.7);
+  background: rgb(255 239 0 / 0.08);
+  color: var(--baker-color-text-primary);
+}
+
+.baker-message-list__older-button:focus-visible {
+  outline: 2px solid var(--baker-color-accent);
+  outline-offset: 3px;
+}
+
+.baker-message-list__older-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .baker-message-list__state {
@@ -171,7 +277,8 @@ function getMessageVariant(senderUid: number): MessageVariant {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .baker-message-list__retry {
+  .baker-message-list__retry,
+  .baker-message-list__older-button {
     transition: none;
   }
 }

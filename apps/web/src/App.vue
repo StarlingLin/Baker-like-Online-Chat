@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import BakerSignOutButton from './components/auth/BakerSignOutButton.vue'
 import SessionStatusScreen from './components/auth/SessionStatusScreen.vue'
 import BakerConversationPanel from './components/conversation/BakerConversationPanel.vue'
@@ -18,6 +18,7 @@ const conversationStore = useConversationStore()
 const messageStore = useMessageStore()
 const sessionStore = useSessionStore()
 const isDevelopment = import.meta.env.DEV
+const conversationPanel = ref<InstanceType<typeof BakerConversationPanel> | null>(null)
 
 const navigationUid = computed(() => {
   if (sessionStore.user === null) {
@@ -53,6 +54,35 @@ function retryMessageHistory(): void {
   }
 
   void messageStore.loadFirstPage(conversationId)
+}
+
+async function loadOlderMessageHistory(): Promise<void> {
+  const conversationId = conversationStore.selectedConversationId
+  const panel = conversationPanel.value
+
+  if (conversationId === null || panel === null) {
+    return
+  }
+
+  const messageCountBeforeLoad = messageStore.getHistory(conversationId).messages.length
+  const anchor = panel.capturePrependScrollAnchor()
+
+  await messageStore.loadOlderMessages(conversationId)
+
+  if (
+    conversationStore.selectedConversationId !== conversationId ||
+    conversationPanel.value !== panel
+  ) {
+    return
+  }
+
+  const messageCountAfterLoad = messageStore.getHistory(conversationId).messages.length
+
+  if (messageCountAfterLoad <= messageCountBeforeLoad) {
+    return
+  }
+
+  await panel.restorePrependScrollAnchor(anchor)
 }
 
 watch(
@@ -135,6 +165,7 @@ onMounted(restoreSession)
     <template #conversation>
       <BakerConversationPanel
         v-if="conversationStore.selectedConversation !== null"
+        ref="conversationPanel"
         :title="conversationStore.selectedConversation.name ?? '未知频段'"
       >
         <BakerMessageList
@@ -143,7 +174,11 @@ onMounted(restoreSession)
           :status="selectedMessageHistory.status"
           :error-message="selectedMessageHistory.errorMessage"
           :current-user-uid="sessionStore.user.uid"
+          :next-before="selectedMessageHistory.nextBefore"
+          :older-messages-status="selectedMessageHistory.olderMessagesStatus"
+          :older-messages-error-message="selectedMessageHistory.olderMessagesErrorMessage"
           @retry="retryMessageHistory"
+          @load-older="loadOlderMessageHistory"
         />
       </BakerConversationPanel>
     </template>

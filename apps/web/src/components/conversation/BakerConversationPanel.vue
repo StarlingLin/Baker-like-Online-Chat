@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useScrollEdges } from '@/composables/use-scroll-edges'
+import { nextTick } from 'vue'
 import inputTopDecoration from '../../assets/baker/decoration/conversation-input-top.webp'
 import groupHeaderCenter from '../../assets/baker/decoration/group-header-center.webp'
 import groupHeaderLeft from '../../assets/baker/decoration/group-header-left.webp'
@@ -12,6 +13,51 @@ const props = defineProps<{
 
 const { scrollViewport, scrollContent, canScrollUp, canScrollDown, updateScrollEdges } =
   useScrollEdges()
+
+function capturePrependScrollAnchor(): {
+  scrollHeight: number
+  scrollTop: number
+} | null {
+  const viewport = scrollViewport.value
+
+  if (viewport === null) {
+    return null
+  }
+
+  return {
+    scrollHeight: viewport.scrollHeight,
+    scrollTop: viewport.scrollTop,
+  }
+}
+
+async function restorePrependScrollAnchor(
+  anchor: {
+    scrollHeight: number
+    scrollTop: number
+  } | null,
+): Promise<void> {
+  if (anchor === null) {
+    return
+  }
+
+  await nextTick()
+
+  const viewport = scrollViewport.value
+
+  if (viewport === null) {
+    return
+  }
+
+  const addedHeight = viewport.scrollHeight - anchor.scrollHeight
+
+  viewport.scrollTop = anchor.scrollTop + addedHeight
+  updateScrollEdges()
+}
+
+defineExpose({
+  capturePrependScrollAnchor,
+  restorePrependScrollAnchor,
+})
 </script>
 
 <template>
