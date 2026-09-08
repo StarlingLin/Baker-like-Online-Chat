@@ -64,6 +64,22 @@ export function createSessionService(database: DatabaseClient['db']) {
       }
     },
 
+    async findActiveByTokenHash(tokenHash: string): Promise<{ expiresAt: Date } | null> {
+      const [row] = await database
+        .select({
+          expiresAt: sessions.expiresAt,
+        })
+        .from(sessions)
+        .where(eq(sessions.tokenHash, tokenHash))
+        .limit(1)
+
+      if (!row || row.expiresAt.getTime() <= Date.now()) {
+        return null
+      }
+
+      return row
+    },
+
     async deleteByToken(token: string): Promise<void> {
       const tokenHash = hashSessionToken(token)
 

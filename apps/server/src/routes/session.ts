@@ -6,8 +6,11 @@ import {
   type SessionAuthenticationOptions,
 } from '../session/authenticate-request.js'
 import { createSessionCookieRemovalOptions, SESSION_COOKIE_NAME } from '../session/cookie.js'
+import { hashSessionToken } from '../session/token.js'
 
-export type SessionRoutesOptions = SessionAuthenticationOptions
+export type SessionRoutesOptions = SessionAuthenticationOptions & {
+  onSessionRevoked: (tokenHash: string) => void | Promise<void>
+}
 
 export const sessionRoutes: FastifyPluginAsync<SessionRoutesOptions> = async (app, options) => {
   app.get('/api/session', async (request, reply) => {
@@ -27,6 +30,7 @@ export const sessionRoutes: FastifyPluginAsync<SessionRoutesOptions> = async (ap
 
     if (token) {
       await options.sessionService.deleteByToken(token)
+      await options.onSessionRevoked(hashSessionToken(token))
     }
 
     return reply

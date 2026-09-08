@@ -4,7 +4,7 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import type { AppEnvironment } from './config.js'
 import { createConversationService } from './conversation/service.js'
 import { createDatabaseClient } from './db/client.js'
-import { attachRealtimeServer } from './realtime/server.js'
+import { attachRealtimeServer, createSessionRoomName } from './realtime/server.js'
 import { conversationRoutes } from './routes/conversation.js'
 import { developmentSessionRoutes } from './routes/development-session.js'
 import { sessionRoutes } from './routes/session.js'
@@ -37,7 +37,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   const sessionService = createSessionService(database.db)
   const conversationService = createConversationService(database.db)
-  attachRealtimeServer(app, {
+  const io = attachRealtimeServer(app, {
     conversationService,
     sessionService,
   })
@@ -49,6 +49,9 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.register(sessionRoutes, {
     appEnvironment: options.appEnvironment,
     sessionService,
+    onSessionRevoked(tokenHash) {
+      io.in(createSessionRoomName(tokenHash)).disconnectSockets(true)
+    },
   })
 
   app.register(conversationRoutes, {

@@ -12,9 +12,11 @@ import { createMessageDto } from '../conversation/message-dto.js'
 import type { ConversationService } from '../conversation/service.js'
 import { SESSION_COOKIE_NAME } from '../session/cookie.js'
 import type { SessionService, SessionUser } from '../session/service.js'
+import { hashSessionToken } from '../session/token.js'
 
 export type RealtimeSocketData = {
   user: SessionUser
+  sessionTokenHash: string
   conversationIds: number[]
 }
 
@@ -32,6 +34,10 @@ export type AttachRealtimeServerOptions = {
 
 export function createConversationRoomName(conversationId: number): string {
   return `conversation:${conversationId}`
+}
+
+export function createSessionRoomName(tokenHash: string): string {
+  return `session:${tokenHash}`
 }
 
 export function attachRealtimeServer(
@@ -67,6 +73,7 @@ export function attachRealtimeServer(
       }
 
       socket.data.user = user
+      socket.data.sessionTokenHash = hashSessionToken(token)
       socket.data.conversationIds = []
       next()
     } catch (error) {
@@ -95,7 +102,66 @@ export function attachRealtimeServer(
     }
   })
 
-  io.on('connection', async (socket) => {
+  io.on('connection', (socket) => {
+    let sessionExpiresAt = 0
+
+    async function prepareConnection(): Promise<boolean> {
+      try {
+        await socket.join(createSessionRoomName(socket.data.sessionTokenHash))
+
+        if (!socket.connected) {
+          return false
+        }
+
+        const session = await options.sessionService.findActiveByTokenHash(
+          socket.data.sessionTokenHash,
+        )
+
+        if (session === null || !socket.connected) {
+          socket.disconnect(true)
+          return false
+        }
+
+        sessionExpiresAt = session.expiresAt.getTime()
+
+        const remainingMs = sessionExpiresAt - Date.now()
+
+        if (remainingMs <= 0) {
+          socket.disconnect(true)
+          return false
+        }
+
+        const expiryTimer = setTimeout(() => {
+          socket.disconnect(true)
+        }, remainingMs)
+
+        expiryTimer.unref()
+
+        socket.once('disconnect', () => {
+          clearTimeout(expiryTimer)
+        })
+
+        const conversationRoomNames = socket.data.conversationIds.map(createConversationRoomName)
+
+        await socket.join(conversationRoomNames)
+
+        return socket.connected
+      } catch (error) {
+        app.log.error(
+          {
+            err: error,
+            userUid: socket.data.user.uid,
+          },
+          'Socket.IO 连接准入检查失败',
+        )
+
+        socket.disconnect(true)
+        return false
+      }
+    }
+
+    const connectionReady = prepareConnection()
+
     socket.on(SEND_MESSAGE_EVENT, async (payload, acknowledge) => {
       if (typeof acknowledge !== 'function') {
         return
@@ -112,6 +178,13 @@ export function attachRealtimeServer(
       }
 
       try {
+        if (!(await connectionReady) || !socket.connected) {
+          return
+        }
+        if (sessionExpiresAt <= Date.now()) {
+          socket.disconnect(true)
+          return
+        }
         const result = await options.conversationService.sendMessageForUser({
           ...parsedPayload.data,
           senderUid: socket.data.user.uid,
@@ -165,27 +238,6 @@ export function attachRealtimeServer(
         })
       }
     })
-
-    const conversationRoomNames = socket.data.conversationIds.map(createConversationRoomName)
-
-    if (conversationRoomNames.length === 0) {
-      return
-    }
-
-    try {
-      await socket.join(conversationRoomNames)
-    } catch (error) {
-      app.log.error(
-        {
-          err: error,
-          userUid: socket.data.user.uid,
-          conversationIds: socket.data.conversationIds,
-        },
-        'Socket.IO 加入会话房间失败',
-      )
-
-      socket.disconnect(true)
-    }
   })
 
   app.addHook('preClose', async () => {
