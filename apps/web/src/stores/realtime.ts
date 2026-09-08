@@ -1,6 +1,9 @@
 import {
   MESSAGE_CREATED_EVENT,
+  SEND_MESSAGE_EVENT,
   type ClientToServerEvents,
+  type SendMessageAcknowledgement,
+  type SendMessagePayload,
   type ServerToClientEvents,
 } from '@baker-chat/contracts'
 import { defineStore } from 'pinia'
@@ -8,16 +11,30 @@ import { io, type Socket } from 'socket.io-client'
 import { ref } from 'vue'
 
 import { useMessageStore } from '@/stores/message'
+import { useSessionStore } from '@/stores/session'
 
 export type RealtimeStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error'
+// 收到回执 | 没连接 | 没确认可能超时 | 不属于当前登录周期
+export type RealtimeSendResult =
+  | {
+      status: 'acknowledged'
+      acknowledgement: SendMessageAcknowledgement
+    }
+  | { status: 'not_connected' }
+  | { status: 'unconfirmed' }
+  | { status: 'cancelled' }
 
 type RealtimeSocket = Socket<ServerToClientEvents, ClientToServerEvents>
 
 export const useRealtimeStore = defineStore('realtime', () => {
   const messageStore = useMessageStore()
+  const sessionStore = useSessionStore()
 
   let socket: RealtimeSocket | null = null
   let hasConnected = false
+  let connectionGeneration = 0
+  let nextSendAttemptId = 0
+  const latestSendAttempts = new Map<string, number>()
 
   const status = ref<RealtimeStatus>('idle')
   const errorMessage = ref<string | null>(null)
@@ -105,9 +122,127 @@ export const useRealtimeStore = defineStore('realtime', () => {
   }
 
   function disconnect(): void {
+    connectionGeneration += 1
+    latestSendAttempts.clear()
     socket?.disconnect()
     hasConnected = false
     resetState()
+  }
+
+  async function sendMessage(payload: SendMessagePayload): Promise<RealtimeSendResult> {
+    const socketClient = socket
+
+    if (socketClient === null || !socketClient.connected) {
+      return { status: 'not_connected' }
+    }
+    const generation = connectionGeneration
+
+    const result = await new Promise<RealtimeSendResult>((resolve) => {
+      socketClient
+        .timeout(10_000)
+        .emit(
+          SEND_MESSAGE_EVENT,
+          payload,
+          (error: Error | null, acknowledgement: SendMessageAcknowledgement | undefined) => {
+            if (error !== null || acknowledgement === undefined) {
+              resolve({ status: 'unconfirmed' })
+              return
+            }
+
+            resolve({
+              status: 'acknowledged',
+              acknowledgement,
+            })
+          },
+        )
+    })
+
+    if (generation !== connectionGeneration) {
+      return { status: 'cancelled' }
+    }
+
+    return result
+  }
+
+  async function sendOutgoingMessage(
+    conversationId: number,
+    clientMessageId: string,
+  ): Promise<void> {
+    const user = sessionStore.user
+
+    if (
+      sessionStore.status !== 'authenticated' ||
+      user === null ||
+      sessionStore.signOutStatus === 'loading' ||
+      socket === null ||
+      !socket.connected ||
+      messageStore.getHistory(conversationId).status !== 'ready'
+    ) {
+      return
+    }
+
+    const outgoingMessage = messageStore
+      .getOutgoingMessages(conversationId)
+      .find(
+        (message) =>
+          message.sender.uid === user.uid && message.payload.clientMessageId === clientMessageId,
+      )
+
+    if (outgoingMessage === undefined) {
+      return
+    }
+
+    const key = `${conversationId}:${user.uid}:${clientMessageId}`
+
+    if (latestSendAttempts.has(key)) {
+      return
+    }
+
+    const attemptId = ++nextSendAttemptId
+    const generation = connectionGeneration
+
+    latestSendAttempts.set(key, attemptId)
+    messageStore.setOutgoingMessageState(conversationId, user.uid, clientMessageId, {
+      status: 'sending',
+    })
+
+    try {
+      const result = await sendMessage(outgoingMessage.payload)
+
+      if (
+        generation !== connectionGeneration ||
+        latestSendAttempts.get(key) !== attemptId ||
+        sessionStore.status !== 'authenticated' ||
+        sessionStore.user?.uid !== user.uid ||
+        !messageStore.getOutgoingMessages(conversationId).includes(outgoingMessage) ||
+        result.status === 'cancelled'
+      ) {
+        return
+      }
+
+      if (result.status === 'acknowledged') {
+        const acknowledgement = result.acknowledgement
+
+        if (acknowledgement.ok) {
+          messageStore.mergeIncomingMessage(conversationId, acknowledgement.message)
+        } else {
+          messageStore.setOutgoingMessageState(conversationId, user.uid, clientMessageId, {
+            status: 'failed',
+            error: acknowledgement.error,
+          })
+        }
+
+        return
+      }
+
+      messageStore.setOutgoingMessageState(conversationId, user.uid, clientMessageId, {
+        status: 'unconfirmed',
+      })
+    } finally {
+      if (latestSendAttempts.get(key) === attemptId) {
+        latestSendAttempts.delete(key)
+      }
+    }
   }
 
   return {
@@ -116,5 +251,7 @@ export const useRealtimeStore = defineStore('realtime', () => {
     reconnectAttempt,
     connect,
     disconnect,
+    sendMessage,
+    sendOutgoingMessage,
   }
 })
