@@ -1,6 +1,7 @@
 import {
   MESSAGE_CREATED_EVENT,
   SEND_MESSAGE_EVENT,
+  messageContentSchema,
   type ClientToServerEvents,
   type SendMessageAcknowledgement,
   type SendMessagePayload,
@@ -23,6 +24,8 @@ export type RealtimeSendResult =
   | { status: 'not_connected' }
   | { status: 'unconfirmed' }
   | { status: 'cancelled' }
+export type SubmitMessageResult =
+  { ok: true; clientMessageId: string } | { ok: false; errorMessage: string }
 
 type RealtimeSocket = Socket<ServerToClientEvents, ClientToServerEvents>
 
@@ -245,6 +248,60 @@ export const useRealtimeStore = defineStore('realtime', () => {
     }
   }
 
+  function submitMessage(conversationId: number, content: string): SubmitMessageResult {
+    const user = sessionStore.user
+
+    if (
+      sessionStore.status !== 'authenticated' ||
+      user === null ||
+      sessionStore.signOutStatus === 'loading'
+    ) {
+      return { ok: false, errorMessage: '连接协议后方可接入通讯' }
+    }
+
+    if (socket === null || !socket.connected) {
+      return { ok: false, errorMessage: '连接已断开，请恢复后重试' }
+    }
+
+    if (messageStore.getHistory(conversationId).status !== 'ready') {
+      return { ok: false, errorMessage: '请等待当前会话的历史消息加载完成' }
+    }
+
+    const parsedContent = messageContentSchema.safeParse(content)
+
+    if (!parsedContent.success) {
+      return {
+        ok: false,
+        errorMessage: parsedContent.error.issues[0]?.message ?? '消息内容不符合要求',
+      }
+    }
+
+    const payload: SendMessagePayload = {
+      conversationId,
+      clientMessageId: crypto.randomUUID(),
+      content: parsedContent.data,
+    }
+    const generation = connectionGeneration
+
+    messageStore.addOutgoingMessage(payload, user)
+
+    void sendOutgoingMessage(conversationId, payload.clientMessageId).catch(() => {
+      if (
+        generation !== connectionGeneration ||
+        sessionStore.status !== 'authenticated' ||
+        sessionStore.user?.uid !== user.uid
+      ) {
+        return
+      }
+
+      messageStore.setOutgoingMessageState(conversationId, user.uid, payload.clientMessageId, {
+        status: 'unconfirmed',
+      })
+    })
+
+    return { ok: true, clientMessageId: payload.clientMessageId }
+  }
+
   return {
     status,
     errorMessage,
@@ -253,5 +310,6 @@ export const useRealtimeStore = defineStore('realtime', () => {
     disconnect,
     sendMessage,
     sendOutgoingMessage,
+    submitMessage,
   }
 })

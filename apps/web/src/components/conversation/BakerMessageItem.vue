@@ -40,6 +40,9 @@ const props = defineProps<{
           {{ props.text }}
         </p>
       </div>
+      <div v-if="$slots.status" class="baker-message-item__status">
+        <slot name="status" />
+      </div>
     </div>
   </article>
 </template>
@@ -54,6 +57,13 @@ const props = defineProps<{
 
 .baker-message-item--own {
   flex-direction: row-reverse;
+}
+
+.baker-message-item__status {
+  margin-top: 4px;
+  color: var(--baker-color-text-muted);
+  font-size: clamp(10px, 1.2vh, 13px);
+  line-height: 1.4;
 }
 
 .baker-message-item__avatar {
@@ -132,6 +142,8 @@ const props = defineProps<{
 .baker-message-item__text {
   font-size: clamp(15px, 1.8vh, 20px);
   line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .baker-message-item--other .baker-message-item__text {

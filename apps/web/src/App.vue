@@ -21,6 +21,23 @@ const realtimeStore = useRealtimeStore()
 const sessionStore = useSessionStore()
 const isDevelopment = import.meta.env.DEV
 const conversationPanel = ref<InstanceType<typeof BakerConversationPanel> | null>(null)
+const messageDrafts = ref<Record<number, string>>({})
+const submitError = ref<string | null>(null)
+
+const selectedMessageDraft = computed({
+  get(): string {
+    const conversationId = conversationStore.selectedConversationId
+
+    return conversationId === null ? '' : (messageDrafts.value[conversationId] ?? '')
+  },
+  set(value: string): void {
+    const conversationId = conversationStore.selectedConversationId
+
+    if (conversationId !== null) {
+      messageDrafts.value[conversationId] = value
+    }
+  },
+})
 
 const navigationUid = computed(() => {
   if (sessionStore.user === null) {
@@ -39,6 +56,84 @@ const selectedMessageHistory = computed(() => {
 
   return messageStore.getHistory(conversationId)
 })
+
+const selectedOutgoingMessages = computed(() => {
+  const conversationId = conversationStore.selectedConversationId
+
+  return conversationId === null ? [] : messageStore.getOutgoingMessages(conversationId)
+})
+
+const selectedOutgoingLayoutKey = computed(() =>
+  selectedOutgoingMessages.value
+    .map(
+      (message) =>
+        `${message.sender.uid}:${message.payload.clientMessageId}:${message.state.status}`,
+    )
+    .join('|'),
+)
+
+const canSubmitMessage = computed(
+  () =>
+    sessionStore.status === 'authenticated' &&
+    sessionStore.user !== null &&
+    sessionStore.signOutStatus !== 'loading' &&
+    realtimeStore.status === 'connected' &&
+    selectedMessageHistory.value?.status === 'ready',
+)
+
+function submitCurrentMessage(): void {
+  const conversationId = conversationStore.selectedConversationId
+  const content = selectedMessageDraft.value
+
+  if (conversationId === null || !canSubmitMessage.value || content.trim().length === 0) {
+    return
+  }
+
+  const result = realtimeStore.submitMessage(conversationId, content)
+
+  if (!result.ok) {
+    submitError.value = result.errorMessage
+    return
+  }
+
+  submitError.value = null
+  messageDrafts.value[conversationId] = ''
+}
+
+async function retryOutgoingMessage(clientMessageId: string): Promise<void> {
+  const conversationId = conversationStore.selectedConversationId
+  const user = sessionStore.user
+
+  if (conversationId === null || user === null || !canSubmitMessage.value) {
+    return
+  }
+
+  const message = messageStore
+    .getOutgoingMessages(conversationId)
+    .find(
+      (item) => item.sender.uid === user.uid && item.payload.clientMessageId === clientMessageId,
+    )
+
+  if (message === undefined || message.state.status !== 'unconfirmed') {
+    return
+  }
+
+  try {
+    await realtimeStore.sendOutgoingMessage(conversationId, clientMessageId)
+  } catch {
+    if (
+      sessionStore.status !== 'authenticated' ||
+      sessionStore.user?.uid !== user.uid ||
+      !messageStore.getOutgoingMessages(conversationId).includes(message)
+    ) {
+      return
+    }
+
+    messageStore.setOutgoingMessageState(conversationId, user.uid, clientMessageId, {
+      status: 'unconfirmed',
+    })
+  }
+}
 
 const selectedLatestMessageId = computed(() => {
   const messages = selectedMessageHistory.value?.messages
@@ -109,6 +204,8 @@ watch(
     realtimeStore.disconnect()
     conversationStore.reset()
     messageStore.reset()
+    messageDrafts.value = {}
+    submitError.value = null
   },
   { immediate: true },
 )
@@ -127,9 +224,13 @@ watch(
 )
 
 watch(
-  [() => conversationStore.selectedConversationId, selectedLatestMessageId],
-  async ([conversationId, latestMessageId], [previousConversationId]) => {
-    if (conversationId === null || latestMessageId === null) {
+  [
+    () => conversationStore.selectedConversationId,
+    selectedLatestMessageId,
+    selectedOutgoingLayoutKey,
+  ],
+  async ([conversationId, latestMessageId, outgoingLayoutKey], [previousConversationId]) => {
+    if (conversationId === null || (latestMessageId === null && outgoingLayoutKey === '')) {
       return
     }
 
@@ -150,9 +251,15 @@ watch(
 
     conversationPanel.value?.scrollMessagesToBottom()
   },
-  {
-    flush: 'pre',
+  { flush: 'pre' },
+)
+
+watch(
+  [() => conversationStore.selectedConversationId, selectedMessageDraft],
+  () => {
+    submitError.value = null
   },
+  { flush: 'sync' },
 )
 
 onMounted(restoreSession)
@@ -207,9 +314,13 @@ onMounted(restoreSession)
 
     <template #conversation>
       <BakerConversationPanel
+        v-model:draft="selectedMessageDraft"
         v-if="conversationStore.selectedConversation !== null"
         ref="conversationPanel"
         :title="conversationStore.selectedConversation.name ?? '未知频段'"
+        :can-submit="canSubmitMessage"
+        :submit-error="submitError"
+        @submit="submitCurrentMessage"
       >
         <BakerMessageList
           v-if="selectedMessageHistory !== null && sessionStore.user !== null"
@@ -220,6 +331,9 @@ onMounted(restoreSession)
           :next-before="selectedMessageHistory.nextBefore"
           :older-messages-status="selectedMessageHistory.olderMessagesStatus"
           :older-messages-error-message="selectedMessageHistory.olderMessagesErrorMessage"
+          :outgoing-messages="selectedOutgoingMessages"
+          :can-retry="canSubmitMessage"
+          @retry-message="retryOutgoingMessage"
           @retry="retryMessageHistory"
           @load-older="loadOlderMessageHistory"
         />

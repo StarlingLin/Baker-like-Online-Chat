@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { OutgoingMessage, OutgoingMessageState } from '@/stores/message'
 import { formatUserDisplayName } from '@/utils/user-display'
 import type { MessageDto } from '@baker-chat/contracts'
 import departureAvatarFrame from '../../assets/baker/avatar-frames/departure.png'
@@ -19,11 +20,14 @@ const props = defineProps<{
   nextBefore: number | null
   olderMessagesStatus: OlderMessagesStatus
   olderMessagesErrorMessage: string | null
+  outgoingMessages: OutgoingMessage[]
+  canRetry: boolean
 }>()
 
 const emit = defineEmits<{
   retry: []
   loadOlder: []
+  retryMessage: [clientMessageId: string]
 }>()
 
 const avatarSources = new Map<number, string>([
@@ -38,6 +42,17 @@ function getAvatarSource(uid: number): string {
 
 function getMessageVariant(senderUid: number): MessageVariant {
   return senderUid === props.currentUserUid ? 'own' : 'other'
+}
+
+function getOutgoingStatusText(state: OutgoingMessageState): string {
+  switch (state.status) {
+    case 'sending':
+      return '发送中'
+    case 'unconfirmed':
+      return '未确认送达'
+    case 'failed':
+      return '发送失败'
+  }
 }
 </script>
 
@@ -77,7 +92,7 @@ function getMessageVariant(senderUid: number): MessageVariant {
     </div>
 
     <div
-      v-else-if="props.messages.length === 0"
+      v-else-if="props.messages.length === 0 && props.outgoingMessages.length === 0"
       class="baker-message-list__state baker-message-list__state--empty"
       role="status"
     >
@@ -119,6 +134,31 @@ function getMessageVariant(senderUid: number): MessageVariant {
         :avatar-frame-src="departureAvatarFrame"
         :variant="getMessageVariant(message.sender.uid)"
       />
+
+      <BakerMessageItem
+        v-for="message in props.outgoingMessages"
+        :key="`outgoing:${message.sender.uid}:${message.payload.clientMessageId}`"
+        :display-name="formatUserDisplayName(message.sender)"
+        :text="message.payload.content"
+        :avatar-src="getAvatarSource(message.sender.uid)"
+        :avatar-frame-src="departureAvatarFrame"
+        :variant="getMessageVariant(message.sender.uid)"
+      >
+        <template #status>
+          <button
+            v-if="message.state.status === 'unconfirmed'"
+            class="baker-message-list__retry-message"
+            type="button"
+            :disabled="!props.canRetry"
+            @click="emit('retryMessage', message.payload.clientMessageId)"
+          >
+            未确认送达-重试
+          </button>
+          <span v-else>
+            {{ getOutgoingStatusText(message.state) }}
+          </span>
+        </template>
+      </BakerMessageItem>
     </template>
   </div>
 </template>
@@ -263,6 +303,27 @@ function getMessageVariant(senderUid: number): MessageVariant {
     border-color 120ms ease,
     background-color 120ms ease,
     color 120ms ease;
+}
+
+.baker-message-list__retry-message {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.baker-message-list__retry-message:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.baker-message-list__retry-message:focus-visible {
+  outline: 1px solid currentcolor;
+  outline-offset: 2px;
 }
 
 .baker-message-list__retry:hover {

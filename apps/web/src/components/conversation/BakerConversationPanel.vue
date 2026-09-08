@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useScrollEdges } from '@/composables/use-scroll-edges'
-import { nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
 import inputTopDecoration from '../../assets/baker/decoration/conversation-input-top.webp'
 import groupHeaderCenter from '../../assets/baker/decoration/group-header-center.webp'
 import groupHeaderLeft from '../../assets/baker/decoration/group-header-left.webp'
@@ -9,7 +9,32 @@ import groupHeaderRight from '../../assets/baker/decoration/group-header-right.w
 
 const props = defineProps<{
   title: string
+  canSubmit: boolean
+  submitError: string | null
 }>()
+const draft = defineModel<string>('draft', { required: true })
+const emit = defineEmits<{
+  submit: []
+}>()
+
+const isComposing = ref(false)
+
+function submitDraft(): void {
+  if (!props.canSubmit || isComposing.value) {
+    return
+  }
+
+  emit('submit')
+}
+
+function handleInputKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' || event.isComposing || isComposing.value || event.repeat) {
+    return
+  }
+
+  event.preventDefault()
+  submitDraft()
+}
 
 const { scrollViewport, scrollContent, canScrollUp, canScrollDown, updateScrollEdges } =
   useScrollEdges()
@@ -178,12 +203,25 @@ defineExpose({
         <!-- 抗拉伸 -->
 
         <input
+          v-model="draft"
           class="baker-conversation-panel__input"
           type="text"
           placeholder="发消息"
-          aria-label="消息输入框（当前只读）"
-          readonly
+          aria-label="消息输入框"
+          :aria-describedby="props.submitError !== null ? 'message-submit-error' : undefined"
+          @compositionstart="isComposing = true"
+          @compositionend="isComposing = false"
+          @keydown="handleInputKeydown"
         />
+        <!-- 超长提示 -->
+        <p
+          v-if="props.submitError !== null"
+          id="message-submit-error"
+          class="baker-conversation-panel__submit-error"
+          role="alert"
+        >
+          {{ props.submitError }}
+        </p>
       </footer>
     </div>
   </section>
@@ -539,11 +577,21 @@ defineExpose({
 .baker-conversation-panel__composer {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   min-height: clamp(60px, 7.8vh, 88px);
   align-items: center;
   padding: clamp(10px, 1.45vh, 16px) clamp(18px, 2.3vh, 28px);
   border-top: 1px solid rgb(202 201 201 / 0.34);
   background: rgb(60 59 57 / 0.94);
+}
+
+.baker-conversation-panel__submit-error {
+  flex: 0 0 100%;
+  margin: 6px 0 0;
+  color: rgb(255 184 176 / 0.9);
+  font-size: clamp(11px, 1.25vh, 14px);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 /* 贴在输入区上边缘 */
@@ -567,7 +615,7 @@ defineExpose({
   transform: translateY(-135%);
 }
 
-/* 当前只读 */
+/* 输入框 */
 .baker-conversation-panel__input {
   position: relative;
   z-index: 2;
@@ -581,7 +629,7 @@ defineExpose({
   background: #efefef;
   color: #222220;
   box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.15);
-  cursor: default;
+  cursor: text;
 }
 
 .baker-conversation-panel__input::placeholder {
