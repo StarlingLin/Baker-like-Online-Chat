@@ -1,10 +1,25 @@
 import { fetchMessageHistory } from '@/api/conversation'
-import type { MessageDto } from '@baker-chat/contracts'
+import type {
+  MessageDto,
+  MessageSenderDto,
+  SendMessageErrorCode,
+  SendMessagePayload,
+} from '@baker-chat/contracts'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export type MessageHistoryStatus = 'idle' | 'loading' | 'ready' | 'error'
 export type OlderMessagesStatus = 'idle' | 'loading' | 'error'
+export type OutgoingMessageState =
+  | { status: 'sending' }
+  | { status: 'unconfirmed' }
+  | { status: 'failed'; error: SendMessageErrorCode }
+export type OutgoingMessage = {
+  payload: Readonly<SendMessagePayload>
+  sender: MessageSenderDto
+  submittedAt: string
+  state: OutgoingMessageState
+}
 
 export type ConversationMessageHistory = {
   messages: MessageDto[]
@@ -56,9 +71,81 @@ export const useMessageStore = defineStore('message', () => {
   const latestRefreshIds = new Map<number, number>()
 
   const histories = ref<Record<number, ConversationMessageHistory>>({})
+  const outgoingMessages = ref<Record<number, OutgoingMessage[]>>({})
 
   function getHistory(conversationId: number): ConversationMessageHistory {
     return histories.value[conversationId] ?? createIdleMessageHistory()
+  }
+
+  function getOutgoingMessages(conversationId: number): OutgoingMessage[] {
+    return outgoingMessages.value[conversationId] ?? []
+  }
+
+  function addOutgoingMessage(
+    payload: SendMessagePayload,
+    sender: MessageSenderDto,
+  ): OutgoingMessage {
+    const currentMessages = getOutgoingMessages(payload.conversationId)
+
+    const existingMessage = currentMessages.find(
+      (message) =>
+        message.sender.uid === sender.uid &&
+        message.payload.clientMessageId === payload.clientMessageId,
+    )
+
+    if (existingMessage !== undefined) {
+      return existingMessage
+    }
+
+    const outgoingMessage: OutgoingMessage = {
+      payload: { ...payload },
+      sender: { ...sender },
+      submittedAt: new Date().toISOString(),
+      state: { status: 'sending' },
+    }
+
+    outgoingMessages.value[payload.conversationId] = [...currentMessages, outgoingMessage]
+
+    return outgoingMessage
+  }
+
+  function setOutgoingMessageState(
+    conversationId: number,
+    senderUid: number,
+    clientMessageId: string,
+    state: OutgoingMessageState,
+  ): boolean {
+    const outgoingMessage = getOutgoingMessages(conversationId).find(
+      (message) =>
+        message.sender.uid === senderUid && message.payload.clientMessageId === clientMessageId,
+    )
+
+    if (outgoingMessage === undefined) {
+      return false
+    }
+
+    outgoingMessage.state = { ...state }
+    return true
+  }
+
+  function reconcileOutgoingMessages(
+    conversationId: number,
+    confirmedMessages: MessageDto[],
+  ): void {
+    const currentMessages = getOutgoingMessages(conversationId)
+
+    if (currentMessages.length === 0) {
+      return
+    }
+
+    outgoingMessages.value[conversationId] = currentMessages.filter(
+      (outgoingMessage) =>
+        !confirmedMessages.some(
+          (confirmedMessage) =>
+            confirmedMessage.sender.uid === outgoingMessage.sender.uid &&
+            confirmedMessage.clientMessageId === outgoingMessage.payload.clientMessageId,
+        ),
+    )
   }
 
   function mergeIncomingMessage(conversationId: number, message: MessageDto): void {
@@ -68,6 +155,8 @@ export const useMessageStore = defineStore('message', () => {
       ...currentHistory,
       messages: mergeMessagesById(currentHistory.messages, [message]),
     }
+
+    reconcileOutgoingMessages(conversationId, [message])
   }
 
   async function loadFirstPage(conversationId: number): Promise<void> {
@@ -108,6 +197,8 @@ export const useMessageStore = defineStore('message', () => {
         olderMessagesStatus: 'idle',
         olderMessagesErrorMessage: null,
       }
+
+      reconcileOutgoingMessages(conversationId, historyPage.messages)
 
       latestLoadIds.delete(conversationId)
     } catch (error) {
@@ -161,6 +252,8 @@ export const useMessageStore = defineStore('message', () => {
         ...latestHistory,
         messages: mergeMessagesById(latestHistory.messages, historyPage.messages),
       }
+
+      reconcileOutgoingMessages(conversationId, historyPage.messages)
 
       latestRefreshIds.delete(conversationId)
     } catch {
@@ -235,6 +328,8 @@ export const useMessageStore = defineStore('message', () => {
         olderMessagesErrorMessage: null,
       }
 
+      reconcileOutgoingMessages(conversationId, historyPage.messages)
+
       latestOlderLoadIds.delete(conversationId)
     } catch (error) {
       if (latestOlderLoadIds.get(conversationId) !== loadId) {
@@ -263,6 +358,7 @@ export const useMessageStore = defineStore('message', () => {
     latestOlderLoadIds.clear()
     latestRefreshIds.clear()
     histories.value = {}
+    outgoingMessages.value = {}
   }
 
   return {
@@ -273,6 +369,10 @@ export const useMessageStore = defineStore('message', () => {
     refreshLatestMessages,
     refreshReadyHistories,
     loadOlderMessages,
+    outgoingMessages,
+    getOutgoingMessages,
+    addOutgoingMessage,
+    setOutgoingMessageState,
     reset,
   }
 })
