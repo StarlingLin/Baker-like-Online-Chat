@@ -62,3 +62,11 @@ TODO: 多个群、私聊、Github企鹅之类的 OAuth、Docker……
    pnpm --filter @baker-chat/web dev
    pnpm --filter @baker-chat/server dev
    ```
+
+## 开源协议与素材说明
+
+本项目原创代码采用 [MIT License](LICENSE)，允许在保留版权和许可声明的前提下使用、修改和分发，包括商业使用。
+
+游戏图片、角色美术、标识及截图中包含的第三方素材不属于本项目 MIT 许可的授权范围，相关权利归原权利方所有；本项目不授予这些素材的额外使用权。素材来源见 [Baker 素材说明](apps/web/src/assets/baker/README.md)。
+
+第三方依赖及其他另有授权说明的内容遵循各自的许可。
